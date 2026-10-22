@@ -24,12 +24,14 @@ import { adminData } from '../data/adminOptions';
 import PeerEvaluationDeadlineBadge from '../components/PeerEvaluationDeadlineBadge';
 import EvaluationPeriodStatus from '../components/EvaluationPeriodStatus';
 import { DashboardSidebarContext } from '../context/DashboardSidebarContext';
+import useUiText from '../hooks/useUiText';
 
 const normalizeRole = (role) => String(role || '').trim().toLowerCase().replace(/[-\s]+/g, '_');
 const isLabAssistantRole = (role) => ['lab_assistant', 'ara'].includes(normalizeRole(role));
 
 const InstructorDashboard = () => {
   const { strings } = useContext(LanguageContext);
+  const t = useUiText();
   const { sidebarOpen, setSidebarOpen } = useContext(DashboardSidebarContext);
   const { user: authUser } = useAuth();
   const [profile, setProfile] = useState(() => {
@@ -138,7 +140,7 @@ const InstructorDashboard = () => {
         setPeerDeadline(eligibleEvaluations.find((item) => item.deadline || item.expiryDate)?.deadline || eligibleEvaluations.find((item) => item.expiryDate)?.expiryDate || null);
         setIsPeerEvaluationExpired(false);
       } else if (data?.success === false) {
-        setPeerError(data?.message || 'Unable to load peer evaluations.');
+        setPeerError(data?.message || t('Unable to load peer evaluations.'));
         setPeerEvaluations([]);
         setPeerPendingCount(0);
         setPeerDeadline(null);
@@ -155,7 +157,7 @@ const InstructorDashboard = () => {
         data: error.response?.data,
         message: error.message,
       });
-      setPeerError(error.response?.data?.message || error?.message || 'Unable to load peer evaluations.');
+      setPeerError(error.response?.data?.message || error?.message || t('Unable to load peer evaluations.'));
       setPeerEvaluations([]);
       setPeerPendingCount(0);
       setPeerDeadline(null);
@@ -179,7 +181,7 @@ const InstructorDashboard = () => {
     if (storedUser?.first_name && storedUser?.last_name) {
       return `${storedUser.first_name} ${storedUser.last_name}`;
     }
-    return profile?.username || storedUser?.username || 'Instructor';
+    return profile?.username || storedUser?.username || t('Instructor');
   };
 
   useEffect(() => {
@@ -245,7 +247,7 @@ const InstructorDashboard = () => {
     setAssignedCoursesError('');
     courseAssignmentApi.getInstructorAssignments()
       .then((rows) => { if (mounted) setAssignedCourses(Array.isArray(rows) ? rows : []); })
-      .catch((error) => { if (mounted) setAssignedCoursesError(error?.message || 'Unable to load assigned courses.'); })
+      .catch((error) => { if (mounted) setAssignedCoursesError(error?.message || t('Unable to load assigned courses.')); })
       .finally(() => { if (mounted) setAssignedCoursesLoading(false); });
     return () => { mounted = false; };
   }, [activeView]);
@@ -253,7 +255,7 @@ const InstructorDashboard = () => {
   const sidebarItems = [
     { key: 'overview', label: strings.instructorDashboard.reviewEvaluations, icon: FaClipboardCheck, active: activeView === 'overview' },
     { key: 'peerEvaluation', label: strings.instructorDashboard.peerEvaluation, icon: FaUsers, active: activeView === 'peerEvaluation' },
-    { key: 'performanceDashboard', label: 'My Evaluation Feedback', icon: FaChartBar, active: activeView === 'performanceDashboard' },
+    { key: 'performanceDashboard', label: t('My Evaluation Feedback'), icon: FaChartBar, active: activeView === 'performanceDashboard' },
   ];
 
 
@@ -272,7 +274,7 @@ const InstructorDashboard = () => {
     setPeerModalSuccess('');
     try {
       await evaluationApi.submitPeerEvaluationForm(payload);
-      setPeerModalSuccess('Peer evaluation submitted successfully.');
+      setPeerModalSuccess(t('Peer evaluation submitted successfully.'));
       setShowPeerModal(false);
       setPeerEvaluations((current) => current.map((item) => (item.id === payload.peer_evaluation_id ? { ...item, status: 'completed' } : item)));
       setPeerPendingCount((count) => Math.max(0, count - 1));
@@ -280,7 +282,7 @@ const InstructorDashboard = () => {
       window.dispatchEvent(new CustomEvent(SUBMISSIONS_UPDATED_EVENT, { detail: { type: 'peer-submission' } }));
     } catch (submitError) {
       console.error(submitError);
-      setPeerModalError(submitError?.message || 'Unable to submit peer evaluation.');
+      setPeerModalError(submitError?.message || t('Unable to submit peer evaluation.'));
       setPeerModalLoading(false);
       throw submitError;
     }
@@ -299,7 +301,7 @@ const InstructorDashboard = () => {
                 <p className="text-sm text-gray-500">{strings.instructorDashboard.peerEvaluationDesc}</p>
               </div>
               <span className="px-3 py-1 bg-amber-100 text-amber-800 font-medium text-sm rounded-full">
-                {peerPendingCount} pending
+                {peerPendingCount} {t('pending')}
               </span>
             </div>
 
@@ -312,15 +314,15 @@ const InstructorDashboard = () => {
                   <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Instructor</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Deadline</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Instructor')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Deadline')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Action')}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {peerLoading ? (
                     <tr>
-                      <td colSpan="3" className="px-4 py-8 text-center text-sm text-gray-500">Loading peer evaluations...</td>
+                      <td colSpan="3" className="px-4 py-8 text-center text-sm text-gray-500">{t('Loading peer evaluations...')}</td>
                     </tr>
                   ) : peerError ? (
                     <tr>
@@ -336,23 +338,23 @@ const InstructorDashboard = () => {
 
                       return (
                         <tr key={`peer-${row.id}-${index}`} className="border-b border-gray-100">
-                          <td className="px-4 py-4 text-sm font-medium text-gray-900"><span className="block">{row.instructor_name || 'Instructor'}</span>{['lab_assistant', 'ara'].includes(String(row.target_role || '').toLowerCase()) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Lab Assistant (ARA)</span>}</td>
+                          <td className="px-4 py-4 text-sm font-medium text-gray-900"><span className="block">{row.instructor_name || t('Instructor')}</span>{['lab_assistant', 'ara'].includes(String(row.target_role || '').toLowerCase()) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{t('Lab Assistant (ARA)')}</span>}</td>
                           <td className="px-4 py-4 text-sm"><PeerEvaluationDeadlineBadge deadline={deadline} /></td>
                           <td className="px-4 py-4 text-sm">
                             {isComplete ? (
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-emerald-600">✓ Evaluated ({scoreValue}/100)</span>
+                                <span className="text-sm font-semibold text-emerald-600">✓ {t('Evaluated')} ({scoreValue}/100)</span>
                                 <button
                                   type="button"
                                   onClick={() => openPeerModal(row, 'view', row)}
                                   className="text-sm font-semibold text-blue-600 underline transition-colors hover:text-blue-800"
                                 >
-                                  View Details
+                                  {t('View Details')}
                                 </button>
                               </div>
                             ) : (
                               <button type="button" onClick={() => openPeerModal(row, 'create', null)} className="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-100 hover:text-indigo-700">
-                                <FaStar className="mr-1" /> Evaluate
+                                <FaStar className="mr-1" /> {t('Evaluate')}
                               </button>
                             )}
                           </td>
@@ -361,7 +363,7 @@ const InstructorDashboard = () => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="3" className="px-4 py-8 text-center text-sm text-gray-500">No peer evaluations available</td>
+                      <td colSpan="3" className="px-4 py-8 text-center text-sm text-gray-500">{t('No peer evaluations available')}</td>
                     </tr>
                   )}
                 </tbody>
@@ -382,15 +384,15 @@ const InstructorDashboard = () => {
       return (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-5 py-4">
-            <h2 className="text-lg font-bold text-slate-900">My Assigned Courses</h2>
-            <p className="mt-1 text-sm text-slate-500">Courses currently published to your account.</p>
+            <h2 className="text-lg font-bold text-slate-900">{t('My Assigned Courses')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('Courses currently published to your account.')}</p>
           </div>
           {assignedCoursesError ? <p className="p-5 text-sm text-rose-700">{assignedCoursesError}</p> : null}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">Course</th><th className="px-5 py-3">Code</th><th className="px-5 py-3">Year / Semester</th><th className="px-5 py-3">Section</th></tr></thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-5 py-3">{t('Course')}</th><th className="px-5 py-3">{t('Code')}</th><th className="px-5 py-3">{t('Year / Semester')}</th><th className="px-5 py-3">{t('Section')}</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
-                {assignedCoursesLoading ? <tr><td colSpan="4" className="px-5 py-8 text-center text-slate-500">Loading courses...</td></tr> : assignedCourses.length ? assignedCourses.map((course) => <tr key={course.id}><td className="px-5 py-4 font-medium text-slate-900">{course.course_name || 'Course'}</td><td className="px-5 py-4 text-slate-600">{course.course_code || '-'}</td><td className="px-5 py-4 text-slate-600">{[course.year_level, course.semester].filter(Boolean).join(' / ') || '-'}</td><td className="px-5 py-4 text-slate-600">{course.section || '-'}</td></tr>) : <tr><td colSpan="4" className="px-5 py-8 text-center text-slate-500">No published courses are assigned.</td></tr>}
+                {assignedCoursesLoading ? <tr><td colSpan="4" className="px-5 py-8 text-center text-slate-500">{t('Loading courses...')}</td></tr> : assignedCourses.length ? assignedCourses.map((course) => <tr key={course.id}><td className="px-5 py-4 font-medium text-slate-900">{course.course_name || t('Course')}</td><td className="px-5 py-4 text-slate-600">{course.course_code || '-'}</td><td className="px-5 py-4 text-slate-600">{[course.year_level, course.semester].filter(Boolean).join(' / ') || '-'}</td><td className="px-5 py-4 text-slate-600">{course.section || '-'}</td></tr>) : <tr><td colSpan="4" className="px-5 py-8 text-center text-slate-500">{t('No published courses are assigned.')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -413,13 +415,13 @@ const InstructorDashboard = () => {
             >
               <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${theme === 'blue' ? 'bg-blue-600' : 'bg-violet-600'}`}><Icon size={24} aria-hidden="true" /></span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-sm font-semibold ${theme === 'blue' ? 'text-blue-800' : 'text-violet-800'}`}>{label}</span>
+                <span className={`block text-sm font-semibold ${theme === 'blue' ? 'text-blue-800' : 'text-violet-800'}`}>{t(label)}</span>
                 <span className="mt-1 block text-3xl font-bold tabular-nums text-slate-900">{value}</span>
-                <span className="mt-1 block text-xs text-slate-500">{note}</span>
+                <span className="mt-1 block text-xs text-slate-500">{t(note)}</span>
               </span>
               <span className="self-stretch flex flex-col items-end justify-between">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm"><ArrowRight size={15} aria-hidden="true" /></span>
-                <span className="text-[10px] font-semibold text-slate-400">View details</span>
+                <span className="text-[10px] font-semibold text-slate-400">{t('View details')}</span>
               </span>
             </button>
           ))}
@@ -448,9 +450,9 @@ const InstructorDashboard = () => {
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${iconTone}`}><Icon size={17} aria-hidden="true" /></span>
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-xs font-semibold ${labelTone}`}>{label}</span>
+                  <span className={`block truncate text-xs font-semibold ${labelTone}`}>{t(label)}</span>
                   <span className="mt-0.5 block text-2xl font-bold tabular-nums text-slate-900">{value}</span>
-                  <span className="block truncate text-[10px] text-slate-500">{note}</span>
+                  <span className="block truncate text-[10px] text-slate-500">{t(note)}</span>
                 </span>
                 <ArrowRight size={14} className="shrink-0 text-slate-400 transition group-hover:translate-x-0.5" aria-hidden="true" />
               </button>
@@ -464,19 +466,19 @@ const InstructorDashboard = () => {
               <div className="flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><ClipboardCheck size={17} aria-hidden="true" /></span>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">Recent Course Evaluations</h2>
-                  <p className="text-[10px] text-slate-500">Latest course evaluation activity and feedback.</p>
+                  <h2 className="text-sm font-bold text-slate-900">{t('Recent Course Evaluations')}</h2>
+                  <p className="text-[10px] text-slate-500">{t('Latest course evaluation activity and feedback.')}</p>
                 </div>
               </div>
               <button type="button" onClick={() => setActiveView('performanceDashboard')} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-blue-700 transition hover:bg-blue-50">
-                View All <ArrowRight size={12} aria-hidden="true" />
+                {t('View All')} <ArrowRight size={12} aria-hidden="true" />
               </button>
             </div>
             <div className="grid min-h-48 place-items-center px-5 py-8 text-center">
               <div>
                 <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-500"><Search size={22} aria-hidden="true" /></span>
-                <h3 className="mt-3 text-sm font-semibold text-slate-700">No Course Evaluations Yet</h3>
-                <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">Course evaluation feedback will appear here once students submit their evaluations.</p>
+                <h3 className="mt-3 text-sm font-semibold text-slate-700">{t('No Course Evaluations Yet')}</h3>
+                <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">{t('Course evaluation feedback will appear here once students submit their evaluations.')}</p>
               </div>
             </div>
           </section>
@@ -485,8 +487,8 @@ const InstructorDashboard = () => {
             <div className="mb-3 flex items-center gap-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-700"><Send size={17} aria-hidden="true" /></span>
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Quick Links</h2>
-                <p className="text-[10px] text-slate-500">Access your evaluation tools and feedback.</p>
+                <h2 className="text-sm font-bold text-slate-900">{t('Quick Links')}</h2>
+                <p className="text-[10px] text-slate-500">{t('Access your evaluation tools and feedback.')}</p>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
@@ -498,8 +500,8 @@ const InstructorDashboard = () => {
                 <button key={label} type="button" onClick={action} className={`group flex items-center gap-3 rounded-xl border p-3 text-left transition hover:shadow-sm ${theme === 'blue' ? 'border-blue-100 bg-blue-50/60 hover:bg-blue-50' : theme === 'violet' ? 'border-violet-100 bg-violet-50/60 hover:bg-violet-50' : 'border-emerald-100 bg-emerald-50/60 hover:bg-emerald-50'}`}>
                   <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ${theme === 'blue' ? 'bg-blue-600' : theme === 'violet' ? 'bg-violet-600' : 'bg-emerald-500'}`}><Icon size={16} aria-hidden="true" /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-bold text-slate-800">{label}</span>
-                    <span className="mt-0.5 block truncate text-[10px] text-slate-500">{description}</span>
+                    <span className="block text-xs font-bold text-slate-800">{t(label)}</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-slate-500">{t(description)}</span>
                   </span>
                   <ArrowRight size={14} className="shrink-0 text-slate-400 transition group-hover:translate-x-0.5" aria-hidden="true" />
                 </button>
@@ -513,7 +515,7 @@ const InstructorDashboard = () => {
 
   return (
     <div className="instructor-dashboard-root h-full w-full min-w-0 overflow-hidden">
-      {sidebarOpen ? <button type="button" aria-label="Close sidebar" className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
+      {sidebarOpen ? <button type="button" aria-label={t('Close sidebar')} className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
 
       <div className="instructor-dashboard-shell grid h-full min-h-0 min-w-0 grid-cols-1 lg:grid-cols-[256px_minmax(0,1fr)]">
         <aside className={`fixed bottom-0 left-0 top-16 z-50 h-auto w-64 flex-shrink-0 border-r border-white/15 bg-[#38A0DC] p-4 text-white shadow-xl transition-transform duration-300 lg:static lg:z-auto lg:block lg:h-full lg:w-64 lg:translate-x-0 lg:rounded-none lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -535,22 +537,22 @@ const InstructorDashboard = () => {
               <div className="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Mekdela Amba University</p>
-                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Welcome, {getInstructorFullName()}</h1>
+                  <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">{t('Welcome')}, {getInstructorFullName()}</h1>
                   <span className="mt-2 inline-flex items-center rounded-full border border-white/80 bg-white/80 px-3 py-1 text-[11px] font-semibold text-slate-700 shadow-sm">
-                    Department: {profile?.department_name || profile?.department || 'N/A'}
+                    {t('Department')}: {profile?.department_name || profile?.department || t('N/A')}
                   </span>
-                  <p className="mt-2 text-xs font-medium text-slate-600">Quality teaching builds a stronger future</p>
+                  <p className="mt-2 text-xs font-medium text-slate-600">{t('Quality teaching builds a stronger future')}</p>
                 </div>
                 <label className="relative z-10 inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/80 bg-white/85 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm">
                   <CalendarDays size={16} className="text-blue-700" aria-hidden="true" />
-                  <span>Academic Year</span>
+                  <span>{t('Academic Year')}</span>
                   <select
-                    aria-label="Academic year"
+                    aria-label={t('Academic year')}
                     value={academicYear}
                     onChange={(event) => setSelectedAcademicYear(event.target.value === activeAcademicYear ? '' : event.target.value)}
                     className="max-w-28 cursor-pointer appearance-none bg-transparent pr-4 font-bold text-slate-800 outline-none"
                   >
-                    {academicYearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+                    {academicYearOptions.map((year) => <option key={year} value={year}>{t(year)}</option>)}
                   </select>
                   <ChevronDown size={13} className="pointer-events-none absolute right-2 text-slate-400" aria-hidden="true" />
                 </label>

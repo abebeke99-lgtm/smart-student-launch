@@ -5,6 +5,8 @@ import BackButton from '../components/BackButton';
 import { resolveApiAssetUrl } from '../../config';
 import { userApi } from '../services/api';
 import { Camera, Mail, MapPin, Phone, Save, ShieldCheck, UserRound } from 'lucide-react';
+import { useUiText } from '../hooks/useUiText';
+import { isValidEmail, isValidEthiopianPhone, stripHtmlTags } from '../utils/inputValidation';
 
 const roleLabels = {
   admin: 'System Administrator',
@@ -20,35 +22,9 @@ const roleLabels = {
   student: 'Student',
 };
 
-const COUNTRY_CODES = [
-  { code: 'ET', label: 'Ethiopia', dialCode: '+251', maxLength: 9 },
-  { code: 'US', label: 'United States', dialCode: '+1', maxLength: 10 },
-  { code: 'GB', label: 'United Kingdom', dialCode: '+44', maxLength: 10 },
-  { code: 'KE', label: 'Kenya', dialCode: '+254', maxLength: 9 },
-  { code: 'UG', label: 'Uganda', dialCode: '+256', maxLength: 9 },
-  { code: 'TZ', label: 'Tanzania', dialCode: '+255', maxLength: 9 },
-  { code: 'NG', label: 'Nigeria', dialCode: '+234', maxLength: 10 },
-  { code: 'SD', label: 'Sudan', dialCode: '+249', maxLength: 9 },
-  { code: 'FR', label: 'France', dialCode: '+33', maxLength: 9 },
-  { code: 'DE', label: 'Germany', dialCode: '+49', maxLength: 11 },
-  { code: 'SA', label: 'Saudi Arabia', dialCode: '+966', maxLength: 9 },
-  { code: 'AE', label: 'United Arab Emirates', dialCode: '+971', maxLength: 9 },
-  { code: 'IN', label: 'India', dialCode: '+91', maxLength: 10 },
-];
-
-const getCountryCodeFromPhone = (value) => {
-  const digits = String(value || '').replace(/\D/g, '');
-  const match = COUNTRY_CODES.find((country) => digits.startsWith(country.dialCode.replace('+', '')));
-  return match?.code || 'ET';
-};
-
-const toPhoneInputValue = (value, countryCode = 'ET') => {
+const toPhoneInputValue = (value) => {
   let digits = String(value || '').replace(/\D/g, '');
-  const selectedCountry = COUNTRY_CODES.find((country) => country.code === countryCode) || COUNTRY_CODES[0];
-  const countryPrefix = selectedCountry.dialCode.replace('+', '');
-
-  if (digits.startsWith(countryPrefix)) digits = digits.slice(countryPrefix.length);
-  if (digits.startsWith('251') && selectedCountry.code === 'ET') digits = digits.slice(3);
+  if (digits.startsWith('251')) digits = digits.slice(3);
   if (digits.startsWith('0')) digits = digits.slice(1);
   return digits;
 };
@@ -65,6 +41,7 @@ const getAvatarFallback = (name) => {
 };
 
 const ProfilePage = () => {
+  const t = useUiText();
   const { user, role, setAuthSession } = useAuth();
   const storedUser = useMemo(() => {
     if (typeof window === 'undefined') return {};
@@ -77,27 +54,25 @@ const ProfilePage = () => {
   const profile = { ...storedUser, ...user };
   const normalizedRole = String(profile.role || role || '').trim().toLowerCase();
   const isAdmin = ['admin', 'systemadmin', 'super_admin'].includes(normalizedRole);
-  const profileName = profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.name || profile.fullName || profile.username || 'User';
+  const profileName = profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.name || profile.fullName || profile.username || t('User');
   const [fullName, setFullName] = useState(profileName);
   const [username, setUsername] = useState(profile.username || '');
   const [emailAddress, setEmailAddress] = useState(profile.email || '');
   const [savedEmailAddress, setSavedEmailAddress] = useState(profile.email || '');
-  const department = profile.department_name || profile.departmentName || profile.department || 'Not assigned';
-  const [selectedCountryCode, setSelectedCountryCode] = useState(getCountryCodeFromPhone(profile.phone || profile.phone_number || ''));
-  const [phone, setPhone] = useState(toPhoneInputValue(profile.phone || profile.phone_number, getCountryCodeFromPhone(profile.phone || profile.phone_number || '')));
+  const department = profile.department_name || profile.departmentName || profile.department || t('Not assigned');
+  const displayRole = roleLabels[normalizedRole] ? t(roleLabels[normalizedRole]) : normalizedRole || t('User');
+  const [phone, setPhone] = useState(toPhoneInputValue(profile.phone || profile.phone_number));
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(profile.profile_picture || '');
   const [saving, setSaving] = useState(false);
-  const selectedCountry = COUNTRY_CODES.find((country) => country.code === selectedCountryCode) || COUNTRY_CODES[0];
-
+  const phoneError = phone && !isValidEthiopianPhone(`+251${phone}`);
+  const emailError = isAdmin && emailAddress && !isValidEmail(emailAddress);
   useEffect(() => {
-    const nextCountryCode = getCountryCodeFromPhone(profile.phone || profile.phone_number || '');
     setFullName(profileName);
     setUsername(profile.username || '');
     setEmailAddress(profile.email || '');
     setSavedEmailAddress(profile.email || '');
-    setSelectedCountryCode(nextCountryCode);
-    setPhone(toPhoneInputValue(profile.phone || profile.phone_number, nextCountryCode));
+    setPhone(toPhoneInputValue(profile.phone || profile.phone_number));
     setPhotoPreview(profile.profile_picture || '');
   }, [isAdmin, profile.email, profile.username, profileName, profile.phone, profile.phone_number, profile.profile_picture]);
 
@@ -115,7 +90,7 @@ const ProfilePage = () => {
       } catch (error) {
         if (!cancelled) {
           console.error('Unable to load profile details:', error);
-          toast.error(error.response?.data?.message || 'Unable to load your profile details.');
+          toast.error(error.response?.data?.message || t('Unable to load your profile details.'));
         }
       }
     };
@@ -132,26 +107,36 @@ const ProfilePage = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    const cleanFullName = stripHtmlTags(fullName);
+    if (!cleanFullName) {
+      toast.error(t('Name is required.'));
+      return;
+    }
     const formData = new FormData();
-    if (fullName.trim() !== profileName.trim()) {
-      formData.append('full_name', fullName.trim());
+    if (cleanFullName !== profileName.trim()) {
+      formData.append('full_name', cleanFullName);
     }
     const normalizedUsername = username.trim();
     const normalizedEmail = emailAddress.trim().toLowerCase();
     if (isAdmin && normalizedEmail !== savedEmailAddress.trim().toLowerCase()) {
-      formData.append('email', normalizedEmail);
-    }
-    const currentPhone = toPhoneInputValue(profile.phone || profile.phone_number, selectedCountryCode);
-    if (phone.trim() !== currentPhone) {
-      if (phone.trim() && (!/^\d+$/.test(phone.trim()) || phone.trim().length > selectedCountry.maxLength)) {
-        toast.error('Enter a valid phone number for the selected country.');
+      if (!isValidEmail(normalizedEmail)) {
+        toast.error(t('Enter a valid email address.'));
         return;
       }
-      formData.append('phone', phone.trim() ? `${selectedCountry.dialCode}${phone.trim()}` : '');
+      formData.append('email', normalizedEmail);
+    }
+    const currentPhone = toPhoneInputValue(profile.phone || profile.phone_number);
+    if (phone.trim() !== currentPhone) {
+      const normalizedPhone = phone.trim() ? `+251${phone.trim()}` : '';
+      if (normalizedPhone && !isValidEthiopianPhone(normalizedPhone)) {
+        toast.error(t('Enter a valid Ethiopian phone number.'));
+        return;
+      }
+      formData.append('phone', normalizedPhone);
     }
     if (photoFile) formData.append('photo', photoFile);
     if (![...formData.keys()].length) {
-      toast.error('Make a profile change before saving.');
+      toast.error(t('Make a profile change before saving.'));
       return;
     }
 
@@ -166,30 +151,28 @@ const ProfilePage = () => {
         full_name: responseUser.full_name || fullName.trim(),
         email: responseUser.email ?? (isAdmin ? normalizedEmail : profile.email),
         username: responseUser.username || normalizedUsername || profile.username,
-        phone: responseUser.phone ?? (phone.trim() ? `${selectedCountry.dialCode}${phone.trim()}` : ''),
-        phone_number: responseUser.phone_number ?? (phone.trim() ? `${selectedCountry.dialCode}${phone.trim()}` : ''),
+        phone: responseUser.phone ?? (phone.trim() ? `+251${phone.trim()}` : ''),
+        phone_number: responseUser.phone_number ?? (phone.trim() ? `+251${phone.trim()}` : ''),
         profile_picture: responseUser.profile_picture || photoPreview,
       };
       if (response?.token) setAuthSession(response.token, updatedUser);
       window.localStorage.setItem('user', JSON.stringify(updatedUser));
       window.localStorage.setItem('userData', JSON.stringify(updatedUser));
-      const nextCountryCode = getCountryCodeFromPhone(updatedUser.phone_number || updatedUser.phone || '');
       setFullName(updatedUser.full_name);
       setEmailAddress(updatedUser.email || '');
       setSavedEmailAddress(updatedUser.email || '');
       setUsername(updatedUser.username || '');
-      setSelectedCountryCode(nextCountryCode);
-      setPhone(toPhoneInputValue(updatedUser.phone_number || updatedUser.phone, nextCountryCode));
+      setPhone(toPhoneInputValue(updatedUser.phone_number || updatedUser.phone));
       setPhotoPreview(updatedUser.profile_picture);
       setPhotoFile(null);
-      toast.success('Profile updated successfully!');
+      toast.success(t('Profile updated successfully!'));
     } catch (error) {
       console.error('Profile update failed:', {
         status: error.response?.status,
         data: error.response?.data,
         message: error.message,
       });
-      toast.error(error.response?.data?.message || 'Unable to update your profile.');
+      toast.error(error.response?.data?.message || t('Unable to update your profile.'));
     } finally {
       setSaving(false);
     }
@@ -217,16 +200,16 @@ const ProfilePage = () => {
               <div>
                 <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-blue-100">
                   <ShieldCheck size={15} aria-hidden="true" />
-                  Account settings
+                  {t('Account settings')}
                 </div>
-                <h1 id="profile-title" className="text-3xl font-bold tracking-tight sm:text-4xl">Profile</h1>
-                <p className="mt-2 max-w-lg text-sm leading-6 text-blue-100 sm:text-base">Manage your personal details and keep your account information up to date.</p>
+                <h1 id="profile-title" className="text-3xl font-bold tracking-tight sm:text-4xl">{t('Profile')}</h1>
+                <p className="mt-2 max-w-lg text-sm leading-6 text-blue-100 sm:text-base">{t('Manage your personal details and keep your account information up to date.')}</p>
               </div>
               <div className="flex items-center gap-4 rounded-2xl border border-white/15 bg-white/10 p-3 pr-5 backdrop-blur-sm">
-                <img src={avatarSource} alt={`${fullName} profile`} onError={handleAvatarError} className="h-16 w-16 rounded-xl border-2 border-white/30 object-cover shadow-lg" />
+                <img src={avatarSource} alt={`${fullName} ${t('profile photo')}`} onError={handleAvatarError} className="h-16 w-16 rounded-xl border-2 border-white/30 object-cover shadow-lg" />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-white">{fullName || 'Your profile'}</p>
-                  <p className="mt-1 text-sm text-blue-100">{roleLabels[normalizedRole] || normalizedRole || 'User'}</p>
+                  <p className="truncate font-semibold text-white">{fullName || t('Your profile')}</p>
+                  <p className="mt-1 text-sm text-blue-100">{displayRole}</p>
                 </div>
               </div>
             </div>
@@ -237,102 +220,89 @@ const ProfilePage = () => {
               <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
                 <div className="relative mx-auto w-fit">
                   <img src={avatarSource} alt="" onError={handleAvatarError} className="h-32 w-32 rounded-full border-4 border-white object-cover shadow-lg ring-1 ring-slate-200" />
-                  <label className="absolute bottom-1 right-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-4 border-white bg-blue-700 text-white shadow-md transition hover:bg-blue-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2" title="Change profile photo">
+                  <label className="absolute bottom-1 right-1 inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border-4 border-white bg-blue-700 text-white shadow-md transition hover:bg-blue-800 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2" title={t('Change profile photo')}>
                     <Camera size={17} aria-hidden="true" />
                     <input type="file" accept="image/*" className="sr-only" onChange={(event) => setPhotoFile(event.target.files?.[0] || null)} />
-                    <span className="sr-only">Change Profile Photo</span>
+                    <span className="sr-only">{t('Change Profile Photo')}</span>
                   </label>
                 </div>
                 <div className="mt-4 text-center">
-                  <p className="font-semibold text-slate-900">{fullName || 'Your profile'}</p>
-                  <p className="mt-1 text-sm text-slate-500">{roleLabels[normalizedRole] || normalizedRole || 'User'}</p>
+                  <p className="font-semibold text-slate-900">{fullName || t('Your profile')}</p>
+                  <p className="mt-1 text-sm text-slate-500">{displayRole}</p>
                 </div>
-                <p className="mt-4 border-t border-slate-200 pt-4 text-center text-xs leading-5 text-slate-500">Choose a clear, recent photo to help others recognize your account.</p>
+                <p className="mt-4 border-t border-slate-200 pt-4 text-center text-xs leading-5 text-slate-500">{t('Choose a clear, recent photo to help others recognize your account.')}</p>
               </div>
               <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 p-4 text-sm leading-5 text-blue-900">
                 <ShieldCheck size={18} className="mt-0.5 shrink-0 text-blue-700" aria-hidden="true" />
-                <p>Your role and department are managed by your administrator and cannot be changed here.</p>
+                <p>{t('Your role and department are managed by your administrator and cannot be changed here.')}</p>
               </div>
             </aside>
 
-            <section aria-label="Profile information">
+            <section aria-label={t('Profile information')}>
               <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-5">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
                   <UserRound size={20} aria-hidden="true" />
                 </span>
                 <div>
-                  <h2 className="font-semibold text-slate-900">Personal information</h2>
-                  <p className="mt-0.5 text-sm text-slate-500">Update your contact and account details.</p>
+                  <h2 className="font-semibold text-slate-900">{t('Personal information')}</h2>
+                  <p className="mt-0.5 text-sm text-slate-500">{t('Update your contact and account details.')}</p>
                 </div>
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <label className="block text-sm font-semibold text-slate-700">
-                  Full Name
+                  {t('Full Name')}
                   <input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required maxLength={255} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
                 </label>
 
                 {isAdmin ? (
                   <label className="block text-sm font-semibold text-slate-700">
-                    <span className="inline-flex items-center gap-2"><Mail size={15} className="text-blue-700" aria-hidden="true" />Email Address (Login &amp; Recovery)</span>
-                    <input type="email" value={emailAddress} onChange={(event) => setEmailAddress(event.target.value)} autoComplete="email" required maxLength={254} className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
-                    <span className="mt-1.5 block text-xs font-normal leading-5 text-slate-500">Used to sign in and receive password recovery codes.</span>
+                    <span className="inline-flex items-center gap-2"><Mail size={15} className="text-blue-700" aria-hidden="true" />{t('Email Address (Login & Recovery)')}</span>
+                    <input type="email" value={emailAddress} onChange={(event) => setEmailAddress(event.target.value)} autoComplete="email" required maxLength={254} aria-invalid={Boolean(emailError)} className={`mt-2 w-full rounded-xl border bg-white px-4 py-3 font-normal text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:ring-4 focus:ring-blue-500/10 ${emailError ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'}`} />
+                    {emailError && <span className="mt-1.5 block text-xs font-normal text-red-600" role="alert">{t('Enter a valid email address.')}</span>}
+                    <span className="mt-1.5 block text-xs font-normal leading-5 text-slate-500">{t('Used to sign in and receive password recovery codes.')}</span>
                   </label>
                 ) : (
                   <label className="block text-sm font-semibold text-slate-700">
-                    Username
+                    {t('Username')}
                     <input value={username} readOnly autoComplete="username" className="mt-2 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-normal text-slate-500 shadow-inner" />
                   </label>
                 )}
 
                 <label className="block text-sm font-semibold text-slate-700">
-                  <span className="inline-flex items-center gap-2"><ShieldCheck size={15} className="text-slate-400" aria-hidden="true" />Role / Title</span>
-                  <input value={roleLabels[normalizedRole] || normalizedRole || 'User'} disabled className="mt-2 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-normal text-slate-500" />
+                  <span className="inline-flex items-center gap-2"><ShieldCheck size={15} className="text-slate-400" aria-hidden="true" />{t('Role / Title')}</span>
+                  <input value={displayRole} disabled className="mt-2 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-normal text-slate-500" />
                 </label>
                 <label className="block text-sm font-semibold text-slate-700">
-                  <span className="inline-flex items-center gap-2"><MapPin size={15} className="text-slate-400" aria-hidden="true" />Department</span>
+                  <span className="inline-flex items-center gap-2"><MapPin size={15} className="text-slate-400" aria-hidden="true" />{t('Department')}</span>
                   <input value={department} disabled className="mt-2 w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 font-normal text-slate-500" />
                 </label>
 
                 <label className="block text-sm font-semibold text-slate-700 sm:col-span-2">
-                  <span className="inline-flex items-center gap-2"><Phone size={15} className="text-blue-700" aria-hidden="true" />Phone Number</span>
-                  <div className="mt-2 flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10">
-                    <select
-                      value={selectedCountryCode}
-                      onChange={(event) => {
-                        const nextCountryCode = event.target.value;
-                        setSelectedCountryCode(nextCountryCode);
-                        setPhone('');
-                      }}
-                      className="max-w-[52%] border-r border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700 outline-none sm:max-w-none"
-                      aria-label="Select country calling code"
-                    >
-                      {COUNTRY_CODES.map((country) => (
-                        <option key={country.code} value={country.code}>
-                          {country.dialCode} {country.label}
-                        </option>
-                      ))}
-                    </select>
+                  <span className="inline-flex items-center gap-2"><Phone size={15} className="text-blue-700" aria-hidden="true" />{t('Phone Number')}</span>
+                  <div className={`mt-2 flex w-full overflow-hidden rounded-xl border bg-white shadow-sm transition focus-within:ring-4 focus-within:ring-blue-500/10 ${phoneError ? 'border-red-500' : 'border-slate-200 focus-within:border-blue-500'}`}>
+                    <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-700" aria-hidden="true">+251</span>
                     <input
                       type="tel"
                       inputMode="numeric"
-                      maxLength={selectedCountry.maxLength}
+                      maxLength={9}
                       value={phone}
-                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, selectedCountry.maxLength))}
-                      className="min-w-0 flex-1 bg-white px-4 py-3 font-normal text-slate-900 outline-none"
-                      placeholder={selectedCountry.code === 'ET' ? '9XXXXXXXX' : 'XXXXXXXXXX'}
-                      aria-label={`${selectedCountry.label} phone number`}
+                      onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 9))}
+                      aria-invalid={Boolean(phoneError)}
+                      className={`min-w-0 flex-1 bg-white px-4 py-3 font-normal text-slate-900 outline-none ${phoneError ? 'bg-red-50' : ''}`}
+                      placeholder="9XXXXXXXX"
+                      aria-label={t('Ethiopian mobile number without country code')}
                     />
                   </div>
-                  <span className="mt-1.5 block text-xs font-normal text-slate-500">Enter the local number after the selected country code.</span>
+                  <span className={`mt-1.5 block text-xs font-normal ${phoneError ? 'text-red-600' : 'text-slate-500'}`} role={phoneError ? 'alert' : undefined}>{phoneError ? t('Enter a valid Ethiopian phone number.') : t('Enter 9 digits after the +251 country code.')}</span>
                 </label>
               </div>
 
               <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-slate-500">Your profile changes are saved securely to your account.</p>
+                <p className="text-xs text-slate-500">{t('Your profile changes are saved securely to your account.')}</p>
                 <button type="submit" disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:bg-blue-800 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-500/25 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none">
                   <Save size={17} aria-hidden="true" />
-                  {saving ? 'Saving...' : 'Save Profile Changes'}
+                  {saving ? t('Saving...') : t('Save Profile Changes')}
                 </button>
               </div>
             </section>

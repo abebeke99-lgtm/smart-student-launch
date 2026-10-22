@@ -8,6 +8,7 @@ import { notificationApi } from '../services/api';
 import { resolveApiAssetUrl } from '../../config';
 import mauLogo from '../assets/mau.jpg';
 import toast from 'react-hot-toast';
+import useUiText from '../hooks/useUiText';
 
 const dashboardRoutes = {
   systemadmin: '/admin/dashboard',
@@ -45,6 +46,7 @@ const getAvatarFallback = (name) => {
 const Header = ({ onMenuToggle, sidebarOpen = false }) => {
   const { user, role, logout } = useAuth();
   const { strings } = useContext(LanguageContext);
+  const t = useUiText();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -133,7 +135,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
   const normalizedRole = String(user?.role || role || storedUser?.role || '').trim().toLowerCase();
   const currentUser = { ...storedUser, ...user };
   const dashboardPath = dashboardRoutes[normalizedRole] || '/login';
-  const displayName = currentUser.name || currentUser.full_name || currentUser.fullName || currentUser.username || currentUser.email || 'User';
+  const displayName = currentUser.name || currentUser.full_name || currentUser.fullName || currentUser.username || currentUser.email || t('User');
   const profileLabel = currentUser.username || displayName;
   const profileInitials = displayName
     .split(/\s+/)
@@ -166,7 +168,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
         item.id === notification.id ? { ...item, is_read: 1 } : item
       )));
     } catch (error) {
-      toast.error(error.message || 'Unable to mark notification as read.');
+      toast.error(error.message || t('Unable to mark notification as read.'));
     }
   };
   const deleteNotification = async (notification) => {
@@ -176,7 +178,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
       setNotifications((current) => current.filter((item) => item.id !== notification.id));
       setSelectedNotificationIds((current) => current.filter((id) => id !== String(notification.id)));
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Unable to delete notification.');
+      toast.error(error.response?.data?.message || error.message || t('Unable to delete notification.'));
     } finally {
       setNotificationAction('');
     }
@@ -190,7 +192,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
       setSelectedNotificationIds([]);
       toast.success(strings.common.allNotificationsCleared);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Unable to clear notifications.');
+      toast.error(error.response?.data?.message || error.message || t('Unable to clear notifications.'));
     } finally {
       setNotificationAction('');
     }
@@ -206,7 +208,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
       setSelectedNotificationIds([]);
       toast.success(strings.common.selectedNotificationsCleared);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Unable to delete selected notifications.');
+      toast.error(error.response?.data?.message || error.message || t('Unable to delete selected notifications.'));
     } finally {
       setNotificationAction('');
     }
@@ -281,7 +283,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
     <header className="fixed inset-x-0 top-0 z-[70] h-16 w-full bg-[#38A0DC] text-white shadow-none">
       <div className="flex h-full w-full items-center justify-between gap-4 px-4 lg:px-8">
         <Link to={dashboardPath} className="flex min-w-0 items-center gap-3" aria-label={strings.common.dashboard}>
-          <img src={mauLogo} alt="Mekdela Amba University logo" className="h-10 w-10 shrink-0 object-contain" />
+          <img src={mauLogo} alt={t('Mekdela Amba University logo')} className="h-10 w-10 shrink-0 object-contain" />
           <span className="min-w-0 leading-tight">
             <span className="block truncate text-sm font-bold sm:text-base">{strings.common.appName}</span>
             <span className="block truncate text-[11px] text-white sm:text-xs">{strings.common.universityName}</span>
@@ -370,7 +372,7 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
                           type="checkbox"
                           checked={selectedNotificationIds.includes(String(notification.id))}
                           onChange={() => toggleNotificationSelection(notification.id)}
-                          aria-label={`Select ${notification.title}`}
+                          aria-label={`${t('Select')} ${notification.title}`}
                           className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-700 focus:ring-blue-600"
                         />
                       )}
@@ -400,8 +402,8 @@ const Header = ({ onMenuToggle, sidebarOpen = false }) => {
                           type="button"
                           onClick={() => void deleteNotification(notification)}
                           disabled={Boolean(notificationAction)}
-                          aria-label={`Delete ${notification.title}`}
-                          title="Delete notification"
+                          aria-label={`${t('Delete')} ${notification.title}`}
+                          title={t('Delete notification')}
                           className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-100 hover:text-rose-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />

@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { resolveApiAssetUrl } from '../../config';
 import { adminApi, departmentApi } from '../services/api';
+import { useUiText } from '../hooks/useUiText';
 
 const ROLE_OPTIONS = [
   { value: 'vice_president', label: 'Vice President' },
@@ -43,6 +44,7 @@ const CandidateAvatar = ({ candidate, sizeClass = 'h-10 w-10' }) => {
 };
 
 const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, loading }) => {
+  const t = useUiText();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef(null);
@@ -82,7 +84,7 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
       <button
         type="button"
         id="management-candidate"
-        aria-label={selected ? `Selected candidate: ${selected.full_name || selected.username}` : 'Select candidate'}
+        aria-label={selected ? `${t('Selected candidate')}: ${selected.full_name || selected.username}` : t('Select candidate')}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
@@ -94,12 +96,12 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
             <CandidateAvatar candidate={selected} sizeClass="h-9 w-9" />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium text-slate-800">{selected.full_name || selected.username}</span>
-              <span className="block truncate text-xs text-slate-500">{selected.department_name || 'Department not assigned'}</span>
+              <span className="block truncate text-xs text-slate-500">{selected.department_name || t('Department not assigned')}</span>
             </span>
           </>
         ) : (
           <span className="min-w-0 flex-1 truncate text-slate-500">
-            {loading ? 'Loading candidates...' : 'Select Candidate'}
+            {loading ? t('Loading candidates...') : t('Select Candidate')}
           </span>
         )}
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -111,8 +113,8 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
             <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
             <input
               type="search"
-              aria-label="Search instructor by name or department"
-              placeholder="Search instructor by name or department..."
+              aria-label={t('Search instructor by name or department')}
+              placeholder={t('Search instructor by name or department...')}
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
@@ -136,7 +138,7 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
                 <CandidateAvatar candidate={candidate} sizeClass="h-9 w-9" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-slate-800">{candidate.full_name || candidate.username}</span>
-                  <span className="block truncate text-xs text-slate-500">{candidate.department_name || 'Department not assigned'}</span>
+                  <span className="block truncate text-xs text-slate-500">{candidate.department_name || t('Department not assigned')}</span>
                 </span>
                 {isSelected && <Check className="h-4 w-4 shrink-0 text-blue-700" />}
               </button>
@@ -144,9 +146,9 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
           }) : (
             <p className="px-3 py-4 text-center text-sm text-slate-500">
               {loading
-                ? 'Loading candidates...'
+                ? t('Loading candidates...')
                 : searchTerm.trim()
-                  ? 'No instructor found.'
+                  ? t('No instructor found.')
                   : 'No eligible candidates for this selection.'}
             </p>
           )}
@@ -158,6 +160,7 @@ const CandidateProfileDropdown = ({ candidates, selected, onChange, disabled, lo
 };
 
 const ManageRoles = ({ onRoleAssigned }) => {
+  const t = useUiText();
   const [candidates, setCandidates] = useState([]);
   const [colleges, setColleges] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -179,7 +182,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
         setColleges(Array.isArray(collegeRows) ? collegeRows : []);
         setDepartments(Array.isArray(departmentRows) ? departmentRows : []);
       })
-      .catch((error) => toast.error(error.message || 'Unable to load role assignment data.'))
+      .catch((error) => toast.error(error.message || t('Unable to load role assignment data.')))
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
@@ -196,7 +199,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
       department_id: role === 'dept_head' ? departmentId : undefined,
     })
       .then((current) => { if (active) { setOccupant(current); setUserId(''); } })
-      .catch((error) => toast.error(error.message || 'Unable to check the current occupant.'));
+      .catch((error) => toast.error(error.message || t('Unable to check the current occupant.')));
     return () => { active = false; };
   }, [collegeId, departmentId, role]);
 
@@ -246,19 +249,19 @@ const ManageRoles = ({ onRoleAssigned }) => {
 
   const assignRole = async (event) => {
     event.preventDefault();
-    if (!role || !userId) return toast.error('Select a role and eligible instructor.');
-    if (role === 'college_dean' && !collegeId) return toast.error('Select a college before choosing an instructor.');
-    if (role === 'dept_head' && !collegeId) return toast.error('Select a college before choosing a department.');
-    if (role === 'dept_head' && !departmentId) return toast.error('Select a department before choosing an instructor.');
-    if (occupant) return toast.error('Remove the current occupant before assigning this role.');
-    if (!scopedCandidates.some((user) => String(user.id) === String(userId))) return toast.error('The selected instructor is not eligible for this scope.');
+    if (!role || !userId) return toast.error(t('Select a role and eligible instructor.'));
+    if (role === 'college_dean' && !collegeId) return toast.error(t('Select a college before choosing an instructor.'));
+    if (role === 'dept_head' && !collegeId) return toast.error(t('Select a college before choosing a department.'));
+    if (role === 'dept_head' && !departmentId) return toast.error(t('Select a department before choosing an instructor.'));
+    if (occupant) return toast.error(t('Remove the current occupant before assigning this role.'));
+    if (!scopedCandidates.some((user) => String(user.id) === String(userId))) return toast.error(t('The selected instructor is not eligible for this scope.'));
     setSaving(true);
     try {
       await adminApi.assignManagementRole(userId, role, {
         college_id: ['college_dean', 'dept_head'].includes(role) ? Number(collegeId) : null,
         department_id: role === 'dept_head' ? Number(departmentId) : null,
       });
-      toast.success('Role assigned successfully.');
+      toast.success(t('Role assigned successfully.'));
       onRoleAssigned?.(Number(userId), role);
       if (selectedUser) {
         setOccupant(selectedUser);
@@ -268,7 +271,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
       }
       setUserId('');
     } catch (error) {
-      toast.error(error.message || 'Unable to assign role.');
+      toast.error(error.message || t('Unable to assign role.'));
     } finally {
       setSaving(false);
     }
@@ -281,9 +284,9 @@ const ManageRoles = ({ onRoleAssigned }) => {
       await adminApi.resetManagementRole(occupant.id);
       setOccupant(null);
       setCandidates((current) => current.map((user) => (user.id === occupant.id ? { ...user, role: 'instructor' } : user)));
-      toast.success('Current role occupant removed.');
+      toast.success(t('Current role occupant removed.'));
     } catch (error) {
-      toast.error(error.message || 'Unable to remove the current occupant.');
+      toast.error(error.message || t('Unable to remove the current occupant.'));
     } finally {
       setRemoving(false);
     }
@@ -297,8 +300,8 @@ const ManageRoles = ({ onRoleAssigned }) => {
             <UserRound size={23} />
           </div>
           <div>
-            <h2 id="manage-roles-title" className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">Manage Roles</h2>
-            <p className="mt-1 text-sm text-slate-600 sm:text-base">Assign institutional roles to academic staff only.</p>
+            <h2 id="manage-roles-title" className="text-2xl font-bold leading-tight text-slate-900 sm:text-3xl">{t('Manage Roles')}</h2>
+            <p className="mt-1 text-sm text-slate-600 sm:text-base">{t('Assign institutional roles to academic staff only.')}</p>
           </div>
         </header>
 
@@ -306,12 +309,12 @@ const ManageRoles = ({ onRoleAssigned }) => {
             <div className="mb-4 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><ShieldCheck size={20} /></div>
               <div>
-                <h3 id="role-card-title" className="font-semibold text-slate-800">Role</h3>
-                <p className="text-sm text-slate-500">Select the role you want to assign.</p>
+                <h3 id="role-card-title" className="font-semibold text-slate-800">{t('Role')}</h3>
+                <p className="text-sm text-slate-500">{t('Select the role you want to assign.')}</p>
               </div>
             </div>
 
-            <label htmlFor="management-role" className="sr-only">Select role</label>
+            <label htmlFor="management-role" className="sr-only">{t('Select role')}</label>
             <div className="relative">
               <select
                 id="management-role"
@@ -326,14 +329,14 @@ const ManageRoles = ({ onRoleAssigned }) => {
                 className="w-full appearance-none rounded-lg border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 required
               >
-                <option value="">Select Role</option>
-                {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                <option value="">{t('Select Role')}</option>
+                {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             </div>
 
             <div className="mt-3">
-              <label htmlFor="management-college" className="mb-1 block text-sm font-medium text-slate-700">College</label>
+              <label htmlFor="management-college" className="mb-1 block text-sm font-medium text-slate-700">{t('College')}</label>
               <div className="relative">
                 <select
                   id="management-college"
@@ -347,7 +350,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
                   required={role === 'college_dean' || role === 'dept_head'}
                   disabled={loading || !role}
                 >
-                  <option value="">Select College{['college_dean', 'dept_head'].includes(role) ? '' : ' (optional)'}</option>
+                  <option value="">{t('Select College')}{['college_dean', 'dept_head'].includes(role) ? '' : ` (${t('optional')})`}</option>
                   {colleges.map((college) => <option key={college.id} value={college.id}>{college.name}</option>)}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -355,7 +358,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
             </div>
 
             <div className="mt-3">
-              <label htmlFor="management-department" className="mb-1 block text-sm font-medium text-slate-700">Department</label>
+              <label htmlFor="management-department" className="mb-1 block text-sm font-medium text-slate-700">{t('Department')}</label>
               <div className="relative">
                 <select
                   id="management-department"
@@ -368,7 +371,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
                   required={role === 'dept_head'}
                   disabled={loading || !role || !collegeId}
                 >
-                  <option value="">Select Department{role === 'dept_head' ? '' : ' (optional)'}</option>
+                  <option value="">{t('Select Department')}{role === 'dept_head' ? '' : ` (${t('optional')})`}</option>
                   {filteredDepartments.map((department) => (
                     <option key={department.id} value={department.id}>{department.department_name || department.name}</option>
                   ))}
@@ -378,7 +381,7 @@ const ManageRoles = ({ onRoleAssigned }) => {
             </div>
 
             <div className="mt-3">
-              <span id="management-candidate-label" className="mb-1 block text-sm font-medium text-slate-700">Candidate</span>
+              <span id="management-candidate-label" className="mb-1 block text-sm font-medium text-slate-700">{t('Candidate')}</span>
               <CandidateProfileDropdown
                 candidates={scopedCandidates}
                 selected={selectedUser}
@@ -390,27 +393,27 @@ const ManageRoles = ({ onRoleAssigned }) => {
 
             {occupant && (
               <div role="alert" className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                <span>Current {ROLE_OPTIONS.find((option) => option.value === role)?.label}: <strong>{occupant.full_name}</strong></span>
+                <span>{t('Current')} {t(ROLE_OPTIONS.find((option) => option.value === role)?.label)}: <strong>{occupant.full_name}</strong></span>
                 <button type="button" onClick={removeOccupant} disabled={removing} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs font-semibold disabled:opacity-50">
-                  <UserMinus size={14} />{removing ? 'Removing...' : 'Remove'}
+                  <UserMinus size={14} />{removing ? t('Removing...') : t('Remove')}
                 </button>
               </div>
             )}
 
             <div className="mt-5 flex gap-3">
               <button type="submit" disabled={loading || saving || !canAssign} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300">
-                <UserRound size={16} />{saving ? 'Assigning...' : 'Assign Role'}
+                <UserRound size={16} />{saving ? t('Assigning...') : t('Assign Role')}
               </button>
               <button type="button" onClick={resetForm} className="inline-flex min-h-11 min-w-28 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-                <RotateCcw size={16} />Reset
+                <RotateCcw size={16} />{t('Reset')}
               </button>
             </div>
 
             <div className="mt-5 flex gap-3 rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-slate-700">
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
               <div>
-                <p className="font-semibold text-slate-800">Institutional roles can only be assigned to eligible academic staff.</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-600">Only verified active staff members are allowed to receive institutional roles.</p>
+                <p className="font-semibold text-slate-800">{t('Institutional roles can only be assigned to eligible academic staff.')}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">{t('Only verified active staff members are allowed to receive institutional roles.')}</p>
               </div>
             </div>
         </form>

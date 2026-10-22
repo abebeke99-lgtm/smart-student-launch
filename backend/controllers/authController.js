@@ -6,6 +6,7 @@ const { getClientIp, isSystemActive, logAuditEvent } = require("../config/audit"
 const { ensureUserProfileSettings } = require("../utils/profileSettings");
 const { createUserSession, ensureUserSessions } = require("../utils/userSettings");
 const { sendRecoveryEmail } = require("../services/emailService");
+const { isValidUsername } = require("../utils/inputValidation");
 
 const isNetworkUnreachableError = (error) =>
   error?.code === "ENETUNREACH" ||
@@ -223,16 +224,21 @@ const resetPasswordOtp = async (req, res) => {
   const otp = String(req.body?.otp || "").trim();
   const newPassword = String(
     req.body?.newPassword || req.body?.new_password || "",
-  ).trim();
+  );
 
-  if (!identifier || !otp || newPassword.length < 8) {
+  if (!identifier || !otp) {
     return res
       .status(400)
       .json({
         success: false,
-        message:
-          "Username or email, OTP, and a password of at least 8 characters are required.",
+        message: "Username or email and OTP are required.",
       });
+  }
+  if (!isValidPassword(newPassword)) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must contain at least 8 characters.",
+    });
   }
 
   try {
@@ -291,15 +297,20 @@ const resetPassword = async (req, res) => {
   const token = String(req.body?.token || "").trim();
   const newPassword = String(
     req.body?.newPassword || req.body?.new_password || "",
-  ).trim();
-  if (!token || newPassword.length < 8) {
+  );
+  if (!token) {
     return res
       .status(400)
       .json({
         success: false,
-        message:
-          "A valid reset token and a password of at least 8 characters are required.",
+        message: "A valid reset token is required.",
       });
+  }
+  if (!isValidPassword(newPassword)) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must contain at least 8 characters.",
+    });
   }
 
   try {
@@ -329,13 +340,19 @@ const resetPassword = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const username = String(req.body?.username ?? "").trim();
+    const username = String(req.body?.username ?? "");
     const password = String(req.body?.password ?? "").trim();
 
     if (!username || !password) {
       return res.status(400).json({
         success: false,
         message: "Username and password are required.",
+      });
+    }
+    if (!isValidUsername(username, { allowEmail: true })) {
+      return res.status(400).json({
+        success: false,
+        message: "Username must be mau followed by digits, or a valid email for system administrators.",
       });
     }
 

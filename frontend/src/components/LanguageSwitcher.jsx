@@ -3,9 +3,10 @@ import { ChevronDown, Globe2 } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
 
 const LanguageSwitcher = () => {
-  const { language, setLanguage } = useContext(LanguageContext);
+  const { language, setLanguage, strings } = useContext(LanguageContext);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const triggerRef = useRef(null);
 
   useEffect(() => {
     const closeMenu = (event) => {
@@ -15,13 +16,16 @@ const LanguageSwitcher = () => {
     };
 
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setIsOpen(false);
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
     };
 
-    document.addEventListener('mousedown', closeMenu);
+    document.addEventListener('pointerdown', closeMenu);
     document.addEventListener('keydown', closeOnEscape);
     return () => {
-      document.removeEventListener('mousedown', closeMenu);
+      document.removeEventListener('pointerdown', closeMenu);
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, []);
@@ -29,19 +33,20 @@ const LanguageSwitcher = () => {
   return (
     <div ref={menuRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label={`Language: ${language === 'en' ? 'GB English' : 'ET አማርኛ'}`}
+        aria-label={`${strings.common.language}: ${language === 'en' ? 'GB English' : 'ET አማርኛ'}`}
         className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
       >
         <Globe2 className="h-4 w-4" aria-hidden="true" />
-        <span>{language === 'en' ? 'GB English' : 'ET አማርኛ'}</span>
+        <span className="hidden sm:inline">{language === 'en' ? 'GB English' : 'ET አማርኛ'}</span>
         <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
       {isOpen && (
-        <div role="menu" aria-label="Language" className="absolute right-0 z-50 mt-2 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-slate-800 shadow-xl">
+        <div role="menu" aria-label={strings.common.language} className="absolute right-0 z-50 mt-2 w-40 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-slate-800 shadow-xl">
           <button
             type="button"
             role="menuitemradio"

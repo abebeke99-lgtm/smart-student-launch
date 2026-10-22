@@ -2,8 +2,10 @@ import { useContext, useState, useEffect } from 'react';
 import { FaFacebook, FaTwitter, FaLinkedin, FaTelegram, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTimes } from 'react-icons/fa';
 import { LanguageContext } from '../context/LanguageContext';
 import { API_URL } from '../../config';
+import { useUiText } from '../hooks/useUiText';
 
 const Footer = () => {
+  const t = useUiText();
   const currentYear = new Date().getFullYear();
   const { strings } = useContext(LanguageContext);
   const [showDevelopers, setShowDevelopers] = useState(false);
@@ -53,10 +55,10 @@ const Footer = () => {
         <div className="flex flex-col items-center justify-center text-center md:items-center">
           <h3 className="mb-5 text-[2rem] font-bold text-white">{strings.footer.followUs}</h3>
           <div className="flex items-center justify-center gap-3">
-            <a href="https://www.facebook.com/MekdelaAmbaUniversity" target="_blank" rel="noreferrer noopener" aria-label="Facebook" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaFacebook className="h-5 w-5" /></a>
-            <a href="https://twitter.com/MekdelaAmbaUni" target="_blank" rel="noreferrer noopener" aria-label="Twitter" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaTwitter className="h-5 w-5" /></a>
-            <a href="https://t.me/mekdelaamba" target="_blank" rel="noreferrer noopener" aria-label="Telegram" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaTelegram className="h-5 w-5" /></a>
-            <a href="https://www.linkedin.com/school/mekdela-amba-university" target="_blank" rel="noreferrer noopener" aria-label="LinkedIn" className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaLinkedin className="h-5 w-5" /></a>
+            <a href="https://www.facebook.com/MekdelaAmbaUniversity" target="_blank" rel="noreferrer noopener" aria-label={t('Facebook')} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaFacebook className="h-5 w-5" /></a>
+            <a href="https://twitter.com/MekdelaAmbaUni" target="_blank" rel="noreferrer noopener" aria-label={t('Twitter')} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaTwitter className="h-5 w-5" /></a>
+            <a href="https://t.me/mekdelaamba" target="_blank" rel="noreferrer noopener" aria-label={t('Telegram')} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaTelegram className="h-5 w-5" /></a>
+            <a href="https://www.linkedin.com/school/mekdela-amba-university" target="_blank" rel="noreferrer noopener" aria-label={t('LinkedIn')} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white shadow-md transition hover:bg-white/25"><FaLinkedin className="h-5 w-5" /></a>
           </div>
         </div>
 

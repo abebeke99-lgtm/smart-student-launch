@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { evaluationApi } from '../services/api';
+import { useUiText } from '../hooks/useUiText';
 
 const DEFAULT_TEMPLATE = () => ({
   name: 'Standard Student Evaluation Form',
@@ -61,6 +62,7 @@ const DEFAULT_TEMPLATE = () => ({
 const uid = () => `id_${Math.random().toString(36).slice(2, 9)}`;
 
 export default function EvaluationTemplateBuilder({ templateId = null, initial = null, onClose = () => {}, onSaved = () => {} }) {
+  const t = useUiText();
   const [state, setState] = useState(DEFAULT_TEMPLATE());
   const [removingIds, setRemovingIds] = useState([]);
   const scrollRef = useRef(null);
@@ -184,35 +186,35 @@ export default function EvaluationTemplateBuilder({ templateId = null, initial =
       <div className="flex flex-col h-[85vh] max-h-[85vh]">
         <div className="sticky top-0 z-20 bg-white border-b border-gray-100 p-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Edit Evaluation Template - Instructor Performance Evaluation</h3>
+            <h3 className="text-xl font-semibold">{t('Edit Evaluation Template - Instructor Performance Evaluation')}</h3>
             <div className="flex items-center gap-3">
               <button onClick={onClose} className="text-gray-500">✕</button>
             </div>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <input value={state.name} onChange={(e) => updateMeta({ name: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder="Template Name" />
-            <input value={state.academicYear} onChange={(e) => updateMeta({ academicYear: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder="Academic Year" />
+            <input value={state.name} onChange={(e) => updateMeta({ name: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder={t('Template Name')} />
+            <input value={state.academicYear} onChange={(e) => updateMeta({ academicYear: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder={t('Academic Year')} />
             <select value={state.semester} onChange={(e) => updateMeta({ semester: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-              <option>Semester I</option>
-              <option>Semester II</option>
+              <option value="Semester I">{t('Semester I')}</option>
+              <option value="Semester II">{t('Semester II')}</option>
             </select>
-            <input value={state.target} onChange={(e) => updateMeta({ target: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder="Evaluation Target" />
+            <input value={state.target} onChange={(e) => updateMeta({ target: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" placeholder={t('Evaluation Target')} />
           </div>
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 p-4 space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Rating Min</label>
-              <input type="number" value={state.rating.min} onChange={(e) => updateMeta({ rating: { ...state.rating, min: Number(e.target.value) } })} className="w-20 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+              <label className="text-sm text-gray-600">{t('Rating Min')}</label>
+              <input type="number" min="1" max="5" value={state.rating.min} onChange={(e) => updateMeta({ rating: { ...state.rating, min: Number(e.target.value) } })} className="w-20 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600">Rating Max</label>
-              <input type="number" value={state.rating.max} onChange={(e) => updateMeta({ rating: { ...state.rating, max: Number(e.target.value) } })} className="w-20 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+              <label className="text-sm text-gray-600">{t('Rating Max')}</label>
+              <input type="number" min="1" max="5" value={state.rating.max} onChange={(e) => updateMeta({ rating: { ...state.rating, max: Number(e.target.value) } })} className="w-20 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
             </div>
             <div className="md:col-span-2 flex items-center gap-2">
-              <label className="text-sm text-gray-600">Max Total Score</label>
-              <input type="number" value={state.maxScore} onChange={(e) => updateMeta({ maxScore: Number(e.target.value) })} className="w-28 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+              <label className="text-sm text-gray-600">{t('Max Total Score')}</label>
+              <input type="number" min="0" max="100" value={state.maxScore} onChange={(e) => updateMeta({ maxScore: Number(e.target.value) })} className="w-28 rounded-xl border border-gray-200 px-3 py-2 text-sm" />
             </div>
           </div>
 
@@ -223,7 +225,7 @@ export default function EvaluationTemplateBuilder({ templateId = null, initial =
                   <h4 className="font-semibold">{cat.title.en} <span className="text-sm text-gray-500">/ {cat.title.am}</span></h4>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => addItem(cat.id)} className="rounded-full bg-ieps-blue-600 px-3 py-1 text-xs font-semibold text-white">+ Add Item</button>
+                  <button onClick={() => addItem(cat.id)} className="rounded-full bg-ieps-blue-600 px-3 py-1 text-xs font-semibold text-white">+ {t('Add Item')}</button>
                 </div>
               </div>
 
@@ -238,15 +240,15 @@ export default function EvaluationTemplateBuilder({ templateId = null, initial =
                         <div className="flex flex-col items-center text-sm text-gray-500 w-10">
                           <div className="font-semibold">#{number}</div>
                           <div className="flex flex-col gap-1 mt-2">
-                            <button title="Move up" onClick={() => handleMoveUp(cat.id, it.id)} className="text-gray-500 hover:text-gray-700">⬆️</button>
-                            <button title="Move down" onClick={() => handleMoveDown(cat.id, it.id)} className="text-gray-500 hover:text-gray-700">⬇️</button>
+                            <button title={t('Move up')} onClick={() => handleMoveUp(cat.id, it.id)} className="text-gray-500 hover:text-gray-700">⬆️</button>
+                            <button title={t('Move down')} onClick={() => handleMoveDown(cat.id, it.id)} className="text-gray-500 hover:text-gray-700">⬇️</button>
                           </div>
                         </div>
 
                         <div className="flex-1">
                           <div className="grid gap-2 md:grid-cols-2">
                             <div>
-                              <label className="text-xs text-gray-600">English</label>
+                              <label className="text-xs text-gray-600">{t('English')}</label>
                               <textarea
                                 value={it.en || ''}
                                 onChange={(e) => { changeItem(cat.id, it.id, 'en', e.target.value); autoGrow(e.target); }}
@@ -267,7 +269,7 @@ export default function EvaluationTemplateBuilder({ templateId = null, initial =
                             </div>
                           </div>
                           <div className="mt-2 flex justify-end">
-                            <button onClick={() => removeItem(cat.id, it.id)} className="text-red-500 text-sm transition-opacity hover:opacity-80">🗑️ Remove</button>
+                            <button onClick={() => removeItem(cat.id, it.id)} className="text-red-500 text-sm transition-opacity hover:opacity-80">🗑️ {t('Remove')}</button>
                           </div>
                         </div>
                       </div>
@@ -279,25 +281,25 @@ export default function EvaluationTemplateBuilder({ templateId = null, initial =
           ))}
 
           <div className="pt-3">
-            <button onClick={addCategory} className="rounded-xl border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-700">+ Add New Category</button>
+            <button onClick={addCategory} className="rounded-xl border border-dashed border-gray-300 px-4 py-2 text-sm text-gray-700">+ {t('Add New Category')}</button>
           </div>
 
           <div className="mt-6 flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={state.enableGeneralComments} onChange={(e) => updateMeta({ enableGeneralComments: e.target.checked })} />
-              <span>ስለ መምህሩ አጠቃላይ አስተያየት (General Comments)</span>
+              <span>ስለ መምህሩ አጠቃላይ አስተያየት ({t('General Comments')})</span>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={state.enableStrengthsAreas} onChange={(e) => updateMeta({ enableStrengthsAreas: e.target.checked })} />
-              <span>በጥንካሬ የሚነሱ እና ሊታረሙ የሚገባቸው ጎኖች (Strengths & Areas for Improvement)</span>
+              <span>በጥንካሬ የሚነሱ እና ሊታረሙ የሚገባቸው ጎኖች ({t('Strengths & Areas for Improvement')})</span>
             </label>
           </div>
         </div>
 
         <div className="sticky bottom-0 z-20 bg-white border-t border-gray-100 p-4 flex items-center justify-end gap-3">
-          <button onClick={() => setState(DEFAULT_TEMPLATE())} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Reset Defaults</button>
-          <button onClick={onClose} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Cancel</button>
-          <button onClick={async () => { await saveTemplate(); onClose(); }} className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white">Save Template</button>
+          <button onClick={() => setState(DEFAULT_TEMPLATE())} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">{t('Reset Defaults')}</button>
+          <button onClick={onClose} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">{t('Cancel')}</button>
+          <button onClick={async () => { await saveTemplate(); onClose(); }} className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white">{t('Save Template')}</button>
         </div>
       </div>
     </div>

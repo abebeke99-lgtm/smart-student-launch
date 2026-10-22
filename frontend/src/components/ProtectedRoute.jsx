@@ -1,7 +1,9 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useUiText } from '../hooks/useUiText';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
+  const t = useUiText();
   const { isAuthenticated, isAuthLoading, user, role } = useAuth();
   const location = useLocation();
   let storedUser = {};
@@ -41,7 +43,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const normalizedAllowedRoles = allowedRoles.map(normalizeRole);
 
   if (isAuthLoading) {
-    return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">Loading your dashboard...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">{t('Loading your dashboard...')}</div>;
   }
 
   if (!isAuthenticated) {

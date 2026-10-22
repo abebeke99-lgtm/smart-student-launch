@@ -3,7 +3,7 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 const pool = require('../config/db');
 const { getSystemSetting } = require('../config/audit');
-const { normalizePhoneNumber, isValidPhoneNumber } = require('../utils/phone');
+const { normalizePhoneNumber, isValidRegistrationPhoneNumber } = require('../utils/phone');
 const { ensureUserProfileSettings } = require('../utils/profileSettings');
 
 const normalizeHeader = (value = '') => String(value).trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
@@ -63,7 +63,7 @@ const toStudent = (row = {}) => {
     studentId: getValue(row, ['student_id', 'studentId', 'studentid', 'student_number', 'username']),
     department: getValue(row, ['department_id', 'departmentId', 'department']),
     email: getValue(row, ['email']),
-    phoneNumber: normalizePhoneNumber(getValue(row, ['phone_number', 'phone', 'phoneNumber'])),
+    phoneNumber: getValue(row, ['phone_number', 'phone', 'phoneNumber']),
     password: getValue(row, ['password']),
     semester: getValue(row, ['semester']),
     yearLevel: getValue(row, ['year_level', 'yearLevel', 'year']),
@@ -105,8 +105,10 @@ const saveCycleEnrollment = async (connection, userId, student, cycle) => {
 };
 
 const saveStudent = async (connection, student) => {
+  if (!isValidRegistrationPhoneNumber(String(student.phoneNumber || ''))) {
+    throw new Error('Phone number must contain only numbers and be exactly 10 digits starting with 09 or 07.');
+  }
   const phoneNumber = normalizePhoneNumber(student.phoneNumber);
-  if (!isValidPhoneNumber(phoneNumber)) throw new Error('phone_number must start with 09 or 07 and contain exactly 10 digits.');
   const departmentId = await resolveDepartmentId(connection, student.department);
   if (!departmentId) throw new Error('Department was not found.');
   const passwordValue = student.password || process.env.USER_DEFAULT_PASSWORD || '12345678';
@@ -141,7 +143,7 @@ const registerStudent = async (req, res) => {
   const student = toStudent(req.body || {});
   const missing = missingFields(student);
   if (missing.length) return res.status(400).json({ success: false, message: `Missing required fields: ${missing.join(', ')}` });
-  if (!isValidPhoneNumber(student.phoneNumber)) return res.status(400).json({ success: false, message: 'phone_number must start with 09 or 07 and contain exactly 10 digits.' });
+  if (!isValidRegistrationPhoneNumber(student.phoneNumber)) return res.status(400).json({ success: false, message: 'Phone number must contain only numbers and be exactly 10 digits starting with 09 or 07.' });
   if (student.email && (student.email.length > 254 || !isValidEmail(student.email))) return res.status(400).json({ success: false, message: 'email must be a valid email address.' });
   if (student.email) await ensureUserProfileSettings();
   const cycle = await getConfiguredCycle();
@@ -208,7 +210,7 @@ const bulkRegisterStudents = async (req, res) => {
         registrationDate: importedStudent.registrationDate || existingStudent?.registration_date || '',
       };
       const missing = missingFields(student);
-      if (missing.length || !isValidPhoneNumber(student.phoneNumber) || (student.email && (student.email.length > 254 || !isValidEmail(student.email)))) failures.push({ row: index + 2, message: missing.length ? `Missing required fields: ${missing.join(', ')}` : !isValidPhoneNumber(student.phoneNumber) ? 'phone_number must start with 09 or 07 and contain exactly 10 digits.' : 'email must be a valid email address.' });
+      if (missing.length || !isValidRegistrationPhoneNumber(student.phoneNumber) || (student.email && (student.email.length > 254 || !isValidEmail(student.email)))) failures.push({ row: index + 2, message: missing.length ? `Missing required fields: ${missing.join(', ')}` : !isValidRegistrationPhoneNumber(student.phoneNumber) ? 'Phone number must contain only numbers and be exactly 10 digits starting with 09 or 07.' : 'email must be a valid email address.' });
       return { student, missing };
     });
 

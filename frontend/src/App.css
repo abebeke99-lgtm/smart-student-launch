@@ -17,10 +17,17 @@ body {
   box-sizing: border-box;
 }
 
+html[lang="am"] :is(button, a, label, th, td, p, h1, h2, h3) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
 .dashboard-shell {
   display: flex;
   flex-direction: column;
-  width: 100vw;
+  width: 100%;
+  max-width: 100%;
   height: 100vh;
   min-height: 100vh;
   padding-top: 4rem;
@@ -71,7 +78,7 @@ body {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
 
@@ -116,7 +123,7 @@ body {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
   width: 100%;
 }
@@ -137,6 +144,15 @@ body {
 }
 
 @media (max-width: 767px) {
+  .dashboard-shell,
+  .dashboard-body,
+  .dashboard-main,
+  .dashboard-content,
+  .dashboard-page-content {
+    max-width: 100%;
+    min-width: 0;
+  }
+
   .dashboard-body {
     flex-direction: column;
     flex: 1 1 auto;
@@ -162,6 +178,36 @@ body {
 
   .dashboard-content {
     padding: 1rem;
+  }
+
+  main table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  main form :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main form :is(button[type="submit"], input[type="submit"]) {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+
+  .fixed.inset-0 > [role="dialog"],
+  .fixed.inset-0 > [role="alertdialog"],
+  .fixed.inset-0 > form,
+  .fixed.inset-0 > [class*="max-w-"] {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
 }

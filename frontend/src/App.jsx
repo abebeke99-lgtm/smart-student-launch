@@ -8,6 +8,7 @@ import PublicLayout from './layouts/PublicLayout';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { useUiText } from './hooks/useUiText';
 import './App.css';
 
 const Home = lazy(() => import('./pages/Home'));
@@ -28,6 +29,11 @@ const CollegeDeanDashboard = lazy(() => import('./pages/CollegeDeanDashboard'));
 const DirectorateDashboard = lazy(() => import('./pages/DirectorateDashboard'));
 const VicePresidentDashboard = lazy(() => import('./pages/VicePresidentDashboard'));
 const Unauthorized = lazy(() => import('./pages/Unauthorized'));
+
+const LoadingFallback = () => {
+  const t = useUiText();
+  return <div className="flex min-h-[40vh] items-center justify-center" role="status">{t('Loading page...')}</div>;
+};
 
 function App() {
   return (
@@ -60,7 +66,7 @@ function App() {
         }}
       />
       <main className="flex-grow">
-        <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center" role="status">Loading page...</div>}>
+        <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Home />} />
@@ -92,7 +98,7 @@ function App() {
               <Route path="/directorate/dashboard" element={<DirectorateDashboard />} />
               <Route path="/directorate-dashboard" element={<DirectorateDashboard />} />
             </Route>
-            <Route path="/vice-president/dashboard" element={<ProtectedRoute allowedRoles={['vice_president']}><DashboardLayout role="vice_president" title="Vice President Dashboard"><VicePresidentDashboard /></DashboardLayout></ProtectedRoute>} />
+            <Route path="/vice-president/dashboard" element={<ProtectedRoute allowedRoles={['vice_president']}><DashboardLayout role="vice_president"><VicePresidentDashboard /></DashboardLayout></ProtectedRoute>} />
           </Routes>
         </Suspense>
       </main>

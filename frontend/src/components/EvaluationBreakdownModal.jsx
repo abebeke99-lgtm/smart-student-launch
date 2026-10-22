@@ -1,5 +1,6 @@
 import React from "react";
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { useUiText } from '../hooks/useUiText';
 
 const EVALUATION_CATEGORIES = [
   {
@@ -67,6 +68,7 @@ export default function EvaluationBreakdownModal({
   onEdit,
   submittedDate = null
 }) {
+  const t = useUiText();
   const [expandedCategory, setExpandedCategory] = React.useState(0);
 
   if (!open) return null;
@@ -109,11 +111,11 @@ export default function EvaluationBreakdownModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Evaluation Summary</h2>
-            <p className="text-sm text-gray-600 mt-1">Instructor: {instructorName}</p>
+            <h2 className="text-2xl font-bold text-gray-900">{t('Evaluation Summary')}</h2>
+            <p className="text-sm text-gray-600 mt-1">{t('Instructor')}: {instructorName}</p>
             {submittedDate && (
               <p className="text-xs text-gray-500 mt-1">
-                Submitted: {new Date(submittedDate).toLocaleDateString()} at {new Date(submittedDate).toLocaleTimeString()}
+                {t('Submitted')}: {new Date(submittedDate).toLocaleDateString()} {t('at')} {new Date(submittedDate).toLocaleTimeString()}
               </p>
             )}
           </div>
@@ -129,17 +131,17 @@ export default function EvaluationBreakdownModal({
         <div className={`mb-6 p-6 rounded-xl border-2 ${getTotalScoreColor(totalScore)}`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold opacity-75">Total Performance Score</p>
+              <p className="text-sm font-semibold opacity-75">{t('Total Performance Score')}</p>
               <p className="text-4xl font-bold mt-2">{totalScore.toFixed(1)}/100</p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-semibold opacity-75">Performance Level</p>
+              <p className="text-sm font-semibold opacity-75">{t('Performance Level')}</p>
               <p className="text-2xl font-bold mt-2">
-                {totalScore >= 90 ? '⭐⭐⭐⭐⭐ Excellent' :
-                 totalScore >= 75 ? '⭐⭐⭐⭐ Very Good' :
-                 totalScore >= 60 ? '⭐⭐⭐ Good' :
-                 totalScore >= 40 ? '⭐⭐ Needs Improvement' :
-                 '⭐ Poor'}
+                {totalScore >= 90 ? `⭐⭐⭐⭐⭐ ${t('Excellent')}` :
+                 totalScore >= 75 ? `⭐⭐⭐⭐ ${t('Very Good')}` :
+                 totalScore >= 60 ? `⭐⭐⭐ ${t('Good')}` :
+                 totalScore >= 40 ? `⭐⭐ ${t('Needs Improvement')}` :
+                 `⭐ ${t('Poor')}`}
               </p>
             </div>
           </div>
@@ -147,7 +149,7 @@ export default function EvaluationBreakdownModal({
 
         {/* Category Breakdown */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Category-wise Breakdown</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('Category-wise Breakdown')}</h3>
           <div className="space-y-3">
             {EVALUATION_CATEGORIES.map((categoryObj, categoryIndex) => {
               const categoryScore = calculateCategoryScore(categoryIndex);
@@ -161,11 +163,11 @@ export default function EvaluationBreakdownModal({
                     className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-150 transition-colors"
                   >
                     <div className="flex items-center gap-4 flex-1">
-                      <span className="font-semibold text-gray-900">{categoryObj.category}</span>
+                      <span className="font-semibold text-gray-900">{t(categoryObj.category)}</span>
                       {isComplete ? (
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Complete</span>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">{t('Complete')}</span>
                       ) : (
-                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">Incomplete</span>
+                        <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">{t('Incomplete')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-4">
@@ -192,7 +194,7 @@ export default function EvaluationBreakdownModal({
                                 <span className="inline-block w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                                   {criterion.id}
                                 </span>
-                                <p className="text-sm text-gray-700">{criterion.text}</p>
+                                <p className="text-sm text-gray-700">{t(criterion.text)}</p>
                               </div>
                             </div>
                             {criteriaScores[criterion.id] !== undefined && (
@@ -201,7 +203,7 @@ export default function EvaluationBreakdownModal({
                                   {criteriaScores[criterion.id]}/5
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  {SCORE_LABELS[criteriaScores[criterion.id]]}
+                                  {t(SCORE_LABELS[criteriaScores[criterion.id]])}
                                 </p>
                               </div>
                             )}
@@ -219,21 +221,21 @@ export default function EvaluationBreakdownModal({
         {/* Summary Statistics */}
         <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-xs text-gray-600 uppercase font-semibold">Total Criteria</p>
+            <p className="text-xs text-gray-600 uppercase font-semibold">{t('Total Criteria')}</p>
             <p className="text-2xl font-bold text-blue-600">20</p>
           </div>
           <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-            <p className="text-xs text-gray-600 uppercase font-semibold">Criteria Scored</p>
+            <p className="text-xs text-gray-600 uppercase font-semibold">{t('Criteria Scored')}</p>
             <p className="text-2xl font-bold text-green-600">{Object.keys(criteriaScores).length}</p>
           </div>
           <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
-            <p className="text-xs text-gray-600 uppercase font-semibold">Avg Score (5-point)</p>
+            <p className="text-xs text-gray-600 uppercase font-semibold">{t('Avg Score (5-point)')}</p>
             <p className="text-2xl font-bold text-purple-600">
               {(totalScore / 20).toFixed(2)}
             </p>
           </div>
           <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
-            <p className="text-xs text-gray-600 uppercase font-semibold">Completion</p>
+            <p className="text-xs text-gray-600 uppercase font-semibold">{t('Completion')}</p>
             <p className="text-2xl font-bold text-orange-600">
               {Object.keys(criteriaScores).length === 20 ? '100%' : '⚠️'}
             </p>
@@ -247,7 +249,7 @@ export default function EvaluationBreakdownModal({
             onClick={onClose}
             className="px-6 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
           >
-            Close
+            {t('Close')}
           </button>
           {onEdit && (
             <button
@@ -255,7 +257,7 @@ export default function EvaluationBreakdownModal({
               onClick={onEdit}
               className="px-6 py-2 rounded-lg bg-ieps-blue-600 text-white font-semibold hover:bg-ieps-blue-700 transition-colors"
             >
-              Edit Evaluation
+              {t('Edit Evaluation')}
             </button>
           )}
         </div>

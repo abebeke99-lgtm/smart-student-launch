@@ -3,6 +3,7 @@ import { FaTimes } from 'react-icons/fa';
 import LanguageToggle from './LanguageToggle';
 import { getQuestionText, groupCriteriaByCategory } from '../utils/evaluationCriteria';
 import { validateEvaluationFeedback } from '../utils/validateEvaluationFeedback';
+import { useUiText } from '../hooks/useUiText';
 
 const isLabAssistantRole = (role) => ['lab_assistant', 'ara', 'lab assistant', 'lab-assistant'].includes(String(role || '').trim().toLowerCase());
 
@@ -122,6 +123,7 @@ export default function PeerEvaluationModal({
   evaluationRecord = null,
   sections = standardPeerEvaluationSections,
 }) {
+  const t = useUiText();
   const [responses, setResponses] = useState({});
   const [strengths, setStrengths] = useState('');
   const [suggestions, setSuggestions] = useState('');
@@ -314,7 +316,7 @@ export default function PeerEvaluationModal({
     }
 
     if (!evaluation || !evaluation.id) {
-      setSubmitError(isAmharic ? 'ምንም የእኩዮች ግምገማ አልተመረጠም። እባክዎ አስተዳዳሪውን ያነጋግሩ።' : 'No peer evaluation selected. Please contact your administrator.');
+      setSubmitError(isAmharic ? 'ምንም የእኩዮች ግምገማ አልተመረጠም። እባክዎ አስተዳዳሪውን ያነጋግሩ።' : t('No peer evaluation selected. Please contact your administrator.'));
       return;
     }
 
@@ -357,7 +359,7 @@ export default function PeerEvaluationModal({
       });
       setSubmitSuccess(isAmharic ? 'የእኩዮች ግምገማ በተሳካ ሁኔታ ተልኳል።' : 'Peer evaluation submitted successfully.');
     } catch (error) {
-      setSubmitError(error?.message || 'Unable to submit peer evaluation.');
+      setSubmitError(error?.message || t('Unable to submit peer evaluation.'));
     }
   };
 
@@ -374,7 +376,7 @@ export default function PeerEvaluationModal({
           </div>
           <div className="flex items-center gap-3">
             <LanguageToggle language={language} onChange={setLanguage} />
-            <button type="button" onClick={onClose} aria-label={language === 'am' ? 'ዝጋ' : 'Close'} className="text-gray-500 hover:text-gray-800">
+            <button type="button" onClick={onClose} aria-label={language === 'am' ? 'ዝጋ' : t('Close')} className="text-gray-500 hover:text-gray-800">
               <FaTimes />
             </button>
           </div>
@@ -400,7 +402,7 @@ export default function PeerEvaluationModal({
               <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-gray-700">{isAmharic ? (categoryAmharic[currentCategory.category] || currentCategory.category) : currentCategory.category}</h3>
-                    <span className="text-xs text-gray-500">Category {currentCategoryIndex + 1} of {criteriaSections.length}</span>
+                    <span className="text-xs text-gray-500">{t('Category {current} of {total}').replace('{current}', currentCategoryIndex + 1).replace('{total}', criteriaSections.length)}</span>
                 </div>
                 <div className="mt-4 space-y-3">
                   {(currentCategory.criteria || []).map((item) => (
@@ -408,7 +410,7 @@ export default function PeerEvaluationModal({
                       <p className="flex-1 pr-2 text-xs font-medium leading-relaxed text-gray-700">
                         <span className="mr-2 font-mono font-bold text-gray-400">{item.number || String(item.id).replace(/[^0-9]/g, '') || item.id}.</span>
                         {getQuestionText(item, language)}
-                        {criterionErrors.includes(item.id) && <span className="mt-1 block text-[11px] font-semibold text-rose-700" role="alert">⚠️ Please select a score for this criterion before proceeding.</span>}
+                        {criterionErrors.includes(item.id) && <span className="mt-1 block text-[11px] font-semibold text-rose-700" role="alert">⚠️ {t('Please select a score for this criterion before proceeding.')}</span>}
                       </p>
 
                       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
@@ -457,7 +459,7 @@ export default function PeerEvaluationModal({
                 maxLength={500}
                 disabled={isReadOnly}
                 className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:cursor-default disabled:bg-gray-50"
-                placeholder={isAmharic ? 'ጥንካሬዎችንና አዎንታዊ አስተዋጽኦዎችን ይግለጹ።' : 'Describe strengths and positive contributions.'}
+                placeholder={isAmharic ? 'ጥንካሬዎችንና አዎንታዊ አስተዋጽኦዎችን ይግለጹ።' : t('Describe strengths and positive contributions.')}
               />
             </label>
             </>}
@@ -471,7 +473,7 @@ export default function PeerEvaluationModal({
                 maxLength={500}
                 disabled={isReadOnly}
                 className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:cursor-default disabled:bg-gray-50"
-                placeholder={isAmharic ? 'ለእድገት ገንቢ የማሻሻያ ሀሳቦችን ይስጡ።' : 'Provide constructive suggestions for growth.'}
+                placeholder={isAmharic ? 'ለእድገት ገንቢ የማሻሻያ ሀሳቦችን ይስጡ።' : t('Provide constructive suggestions for growth.')}
               />
             </label>
 
@@ -482,7 +484,7 @@ export default function PeerEvaluationModal({
         <div className="sticky bottom-0 left-0 z-20 border-t border-gray-200 bg-white px-5 py-3">
           <div className="flex items-center justify-between gap-3">
             <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-              {mode === 'view' && !isEditMode ? (isAmharic ? 'ዝጋ' : 'Close') : (isAmharic ? 'ሰርዝ' : 'Cancel')}
+              {mode === 'view' && !isEditMode ? (isAmharic ? 'ዝጋ' : t('Close')) : (isAmharic ? 'ሰርዝ' : t('Cancel'))}
             </button>
 
             <div className="flex flex-wrap justify-end gap-2">
@@ -492,13 +494,13 @@ export default function PeerEvaluationModal({
               </button>
             ) : (
               <>
-              {currentCategoryIndex > 0 && <button type="button" onClick={() => { setCurrentCategoryIndex((index) => index - 1); setSubmitError(''); }} className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700">Previous</button>}
+              {currentCategoryIndex > 0 && <button type="button" onClick={() => { setCurrentCategoryIndex((index) => index - 1); setSubmitError(''); }} className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700">{t('Previous')}</button>}
               <button type="submit" form="peer-evaluation-form" disabled={isSubmitting || isReadOnly} className="rounded-full bg-ieps-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-ieps-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
                 {isSubmitting
-                  ? (isAmharic ? 'በመላክ ላይ...' : 'Submitting...')
+                  ? (isAmharic ? 'በመላክ ላይ...' : t('Submitting...'))
                   : mode === 'view' || mode === 'edit'
-                    ? (isLastCategory ? (isAmharic ? 'ግምገማውን አዘምን' : 'Update Evaluation') : (isAmharic ? 'ቀጣይ ምድብ' : 'Next Category'))
-                    : (isAmharic ? (isLastCategory ? 'የእኩዮች ግምገማ ላክ' : 'ቀጣይ ምድብ') : (isLastCategory ? 'Submit Evaluation' : 'Next Category'))}
+                    ? (isLastCategory ? (isAmharic ? 'ግምገማውን አዘምን' : t('Update Evaluation')) : (isAmharic ? 'ቀጣይ ምድብ' : t('Next Category')))
+                    : (isAmharic ? (isLastCategory ? 'የእኩዮች ግምገማ ላክ' : 'ቀጣይ ምድብ') : (isLastCategory ? t('Submit Evaluation') : t('Next Category')))}
               </button>
               </>
             )}

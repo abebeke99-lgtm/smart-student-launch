@@ -1,6 +1,5 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LanguageContext } from '../context/LanguageContext';
 import { authApi } from '../services/api';
 import {
   FaLock,
@@ -18,6 +17,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import SuccessModal from '../components/SuccessModal';
 import mauLogo from '../assets/mau.jpg';
+import { useUiText } from '../hooks/useUiText';
+import { isValidPassword, isValidUsername } from '../utils/inputValidation';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -39,11 +40,14 @@ const Login = () => {
   const [successPayload, setSuccessPayload] = useState({ title: '', message: '', buttonText: '' });
   const [pendingRoute, setPendingRoute] = useState(null);
   const [loginError, setLoginError] = useState('');
-  const { language } = useContext(LanguageContext);
+  const t = useUiText();
   const { isAuthenticated, role, isFirstLogin, setAuthSession } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const resetToken = searchParams.get('resetToken') || '';
+  const usernameValue = formData.username;
+  const usernameInvalid = Boolean(usernameValue) && !isValidUsername(usernameValue);
+  const newPasswordInvalid = Boolean(forgotPasswordData.newPassword) && !isValidPassword(forgotPasswordData.newPassword);
 
   useEffect(() => {
     if (!resetToken) return;
@@ -63,7 +67,11 @@ const Login = () => {
     event?.preventDefault();
     const email = forgotPasswordData.email.trim();
     if (!email) {
-      toast.error(isAmharic ? 'እባክዎ የኢሜል አድራሻ ያስገቡ።' : 'Enter your recovery email address.');
+      toast.error(t('Enter your recovery email address.'));
+      return;
+    }
+    if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
+      toast.error(t('Enter a valid email address.'));
       return;
     }
 
@@ -82,15 +90,13 @@ const Login = () => {
       setForgotPasswordStep(2);
       toast.success(
         result?.developmentCode
-          ? `Email delivery is unavailable locally. Development recovery code: ${result.developmentCode}`
-          : isAmharic
-            ? 'የማረጋገጫ ኮዱ ተልኳል።'
-            : 'A recovery code was sent to your email.',
+          ? `${t('Email delivery is unavailable locally. Development recovery code:')} ${result.developmentCode}`
+          : t('A recovery code was sent to your email.'),
       );
     } catch (error) {
       const message = error.message?.includes('No active account was found')
-        ? 'Please contact the System Administrator to reset your password. The admin will reset your account with a default password.'
-        : error.message || 'Unable to send password reset instructions.';
+        ? t('Please contact the System Administrator to reset your password. The admin will reset your account with a default password.')
+        : error.message || t('Unable to send password reset instructions.');
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -101,7 +107,7 @@ const Login = () => {
     event.preventDefault();
     const { email, otp } = forgotPasswordData;
     if (!/^\d{6}$/.test(otp.trim())) {
-      toast.error(isAmharic ? 'ባለ 6 አሃዝ ኮድ ያስገቡ።' : 'Enter the 6-digit recovery code.');
+      toast.error(t('Enter the 6-digit recovery code.'));
       return;
     }
 
@@ -109,9 +115,9 @@ const Login = () => {
     try {
       await authApi.verifyOtp({ email, otp: otp.trim() });
       setForgotPasswordStep(3);
-      toast.success(isAmharic ? 'ኮዱ ተረጋግጧል። አዲስ የይለፍ ቃል ያስገቡ።' : 'Code verified. Set a new password.');
+      toast.success(t('Code verified. Set a new password.'));
     } catch (error) {
-      toast.error(error.message || 'Unable to verify the recovery code.');
+      toast.error(error.message || t('Unable to verify the recovery code.'));
     } finally {
       setIsLoading(false);
     }
@@ -120,12 +126,12 @@ const Login = () => {
   const handleResetPassword = async (event) => {
     event.preventDefault();
     const { email, otp, newPassword, confirmPassword } = forgotPasswordData;
-    if (newPassword.length < 8) {
-      toast.error(isAmharic ? 'የይለፍ ቃሉ ቢያንስ 8 ቁምፊዎች ይኑሩት።' : 'Password must be at least 8 characters.');
+    if (!isValidPassword(newPassword)) {
+      toast.error(t('Password must contain at least 8 characters.'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error(isAmharic ? 'የይለፍ ቃሎች አይዛመዱም።' : 'Passwords do not match.');
+      toast.error(t('Passwords do not match.'));
       return;
     }
 
@@ -135,9 +141,9 @@ const Login = () => {
         ? { token: resetToken, newPassword }
         : { email, otp: otp.trim(), newPassword });
       resetForgotPasswordFlow();
-      toast.success(isAmharic ? 'የይለፍ ቃልዎ ተቀይሯል።' : 'Your password has been reset.');
+      toast.success(t('Your password has been reset.'));
     } catch (error) {
-      toast.error(error.message || 'Unable to reset the password.');
+      toast.error(error.message || t('Unable to reset the password.'));
     } finally {
       setIsLoading(false);
     }
@@ -158,14 +164,18 @@ const Login = () => {
     setLoginError('');
     setIsLoading(true);
 
-    const username = String(formData.username ?? '').trim();
+    const username = String(formData.username ?? '');
     const password = String(formData.password ?? '').trim();
 
     if (!username || !password) {
-      const message = language === 'am'
-        ? 'እባክዎ የተጠቃሚ ስም እና የይለፍ ቃል ያስገቡ።'
-        : 'Please enter your username and password.';
+      const message = t('Please enter your username and password.');
       toast.error(message, { duration: Infinity, id: 'login-error' });
+      setLoginError(message);
+      setIsLoading(false);
+      return;
+    }
+    if (!isValidUsername(username)) {
+      const message = t('Use mau followed by numbers, or an admin email address.');
       setLoginError(message);
       setIsLoading(false);
       return;
@@ -176,12 +186,12 @@ const Login = () => {
       const { token, user } = response || {};
 
       if (!token || !user) {
-        throw new Error('Authentication failed.');
+        throw new Error(t('Authentication failed.'));
       }
 
       const first = user.first_name || user.firstName || user.full_name || '';
       const last = user.last_name || user.lastName || '';
-      const displayName = `${first} ${last}`.trim() || user.username || user.student_id || user.email || 'User';
+      const displayName = `${first} ${last}`.trim() || user.username || user.student_id || user.email || t('User');
       const isFirstLogin = Boolean(user.isFirstLogin ?? user.is_first_login ?? false);
       setAuthSession(token, {
         name: displayName,
@@ -203,9 +213,9 @@ const Login = () => {
       }
 
       setSuccessPayload({
-        title: language === 'am' ? 'ስኬታማ!' : 'Success!',
-        message: language === 'am' ? 'ግባት ተሳክቷል።' : 'Login successful.',
-        buttonText: language === 'am' ? 'ቀጥል' : 'Continue',
+        title: t('Success!'),
+        message: t('Login successful.'),
+        buttonText: t('Continue'),
       });
       setPendingRoute(accessRoute);
       setShowSuccessModal(true);
@@ -218,7 +228,7 @@ const Login = () => {
         ? backendMsg
         : backendMsg?.en || backendMsg?.am || backendMsg?.message || '';
       const statusText = error?.response?.statusText;
-      const genericMsg = isAmharic ? 'የተሳሳተ መግቢያ መረጃ ነው።' : 'Incorrect username or password.';
+      const genericMsg = t('Incorrect username or password.');
 
       const finalMsg = normalizedBackendMsg || statusText || genericMsg;
 
@@ -299,7 +309,9 @@ const Login = () => {
 
   const normalizedIdentifier = String(formData.username ?? '').trim().toLowerCase();
   const resolvedRole = normalizeRole(
-    normalizedIdentifier === 'instructor'
+    normalizedIdentifier.includes('@')
+      ? 'systemadmin'
+      : normalizedIdentifier === 'instructor'
       ? 'instructor'
       : normalizedIdentifier === 'depthead' || normalizedIdentifier === 'dept_head'
       ? 'depthead'
@@ -308,38 +320,21 @@ const Login = () => {
       : 'student'
   );
 
-  const isAmharic = language === 'am';
-  const loginText = isAmharic
-    ? {
-        welcome: ' እንኳን ወደ IPES በደህና መጡ',
-        subtitle: 'የአስተማሪ አፈጻጸም ግምገማ ስርዓትን ይጠቀሙ',
-        username: 'የተጠቃሚ ስም',
-        usernamePlaceholder: 'የተጠቃሚ ስምዎን ያስገቡ',
-        usernameHelper: 'በተጠቃሚ ስምዎ ይግቡ። አስተዳዳሪዎች ኢሜላቸውንም መጠቀም ይችላሉ።',
-        password: 'የይለፍ ቃል',
-        login: 'ግባ',
-        loggingIn: 'በመግባት ላይ...',
-        forgotPassword: 'የይለፍ ቃል ረስተዋል?',
-        departmentHead: 'የዲፓርትመንት ኃላፊ መግቢያ',
-        departmentHeadSubtitle: 'የምደባ እና የማዛመድ መሳሪያዎችን ይጠቀሙ',
-        systemAdmin: 'የስርዓት አስተዳዳሪ መግቢያ',
-        systemAdminSubtitle: 'ሙሉ የአስተዳደር ማዕከሉን ይጠቀሙ',
-      }
-    : {
-        welcome: 'WELCOME BACK TO IPES',
-        subtitle: 'Access the Instructor Performance Evaluation System',
-        username: 'Username',
-        usernamePlaceholder: 'Enter your username',
-        usernameHelper: 'Sign in with your username. Admins may also use their email.',
-        password: 'Password',
-        login: 'Login',
-        loggingIn: 'Logging in...',
-        forgotPassword: 'Forgot your password?',
-        departmentHead: 'Department Head Login',
-        departmentHeadSubtitle: 'Access assignment and mapping tools',
-        systemAdmin: 'System Admin Login',
-        systemAdminSubtitle: 'Access the full administration console',
-      };
+  const loginText = {
+    welcome: t('WELCOME BACK TO IPES'),
+    subtitle: t('Access the Instructor Performance Evaluation System'),
+    username: t('Username'),
+    usernamePlaceholder: t('Enter your username'),
+    usernameHelper: t('Sign in with your username. Admins may also use their email.'),
+    password: t('Password'),
+    login: t('Login'),
+    loggingIn: t('Logging in...'),
+    forgotPassword: t('Forgot your password?'),
+    departmentHead: t('Department Head Login'),
+    departmentHeadSubtitle: t('Access assignment and mapping tools'),
+    systemAdmin: t('System Admin Login'),
+    systemAdminSubtitle: t('Access the full administration console'),
+  };
   const roleMeta = {
     student: {
       title: loginText.welcome,
@@ -379,22 +374,22 @@ const Login = () => {
         <div className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-xl md:p-10">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-ieps-blue-100 shadow-inner shadow-ieps-blue-200/40">
-              <img src={mauLogo} alt="Mekdela Amba University logo" className="h-14 w-14" />
+              <img src={mauLogo} alt={`Mekdela Amba University ${t('logo')}`} className="h-14 w-14" />
             </div>
 
             {forgotPasswordMode ? (
               <>
                 <button type="button" onClick={resetForgotPasswordFlow} className="mb-4 text-sm font-medium text-ieps-blue-600 hover:underline">
-                  {isAmharic ? 'ወደ ግባ ተመለስ' : 'Back to login'}
+                  {t('Back to login')}
                 </button>
                 <FaKey className="mx-auto mb-3 h-8 w-8 text-ieps-blue-500" />
-                <h2 className="text-2xl font-bold text-ieps-blue-600">{isAmharic ? 'የይለፍ ቃል ረሱ?' : 'Forgot Password?'}</h2>
+                <h2 className="text-2xl font-bold text-ieps-blue-600">{t('Forgot Password?')}</h2>
                 <p className="mt-1 text-sm text-gray-500">
                   {forgotPasswordStep === 1
-                    ? (isAmharic ? 'የመልሶ ማግኛ ኮድ ወደ ኢሜልዎ እንልካለን።' : 'We will send a recovery code to your email.')
+                    ? t('We will send a recovery code to your email.')
                     : forgotPasswordStep === 2
-                        ? (isAmharic ? 'ወደ ኢሜልዎ የተላከውን ባለ 6 አሃዝ ኮድ ያስገቡ።' : 'Enter the 6-digit code sent to your email.')
-                      : (isAmharic ? 'አዲስ የይለፍ ቃል ይፍጠሩ።' : 'Create a new password.')}
+                        ? t('Enter the 6-digit code sent to your email.')
+                      : t('Create a new password.')}
                 </p>
               </>
             ) : (
@@ -425,13 +420,18 @@ const Login = () => {
                       name="username"
                       value={formData.username}
                       onChange={handleChange('username')}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      aria-invalid={usernameInvalid || loginError === t('Use mau followed by numbers, or an admin email address.')}
                       placeholder={identifierPlaceholder}
                       autoComplete="username"
                       className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ieps-blue-500"
                       required
                     />
                   </div>
-                  {loginError === 'Incorrect username' && <p className="mt-1 text-sm font-medium text-red-600">Incorrect username</p>}
+                  {usernameInvalid && <p className="mt-1 text-sm font-medium text-red-600">{t('Username must start with mau and contain digits only.')}</p>}
+                  {!usernameInvalid && usernameValue && !usernameValue.includes('@') && <p className="mt-1 text-xs text-gray-500">{t('Use mau followed by numbers, or an admin email address.')}</p>}
+                  {loginError === 'Incorrect username' && <p className="mt-1 text-sm font-medium text-red-600">{t('Incorrect username')}</p>}
                   <p className="mt-1 text-xs text-gray-500">{loginText.usernameHelper}</p>
                 </div>
 
@@ -449,11 +449,11 @@ const Login = () => {
                       className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-12 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ieps-blue-500"
                       required
                     />
-                    <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-ieps-blue-600" aria-label={showPassword ? (isAmharic ? 'የይለፍ ቃሉን ደብቅ' : 'Hide password') : (isAmharic ? 'የይለፍ ቃሉን አሳይ' : 'Show password')}>
+                    <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-ieps-blue-600" aria-label={showPassword ? t('Hide password') : t('Show password')}>
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
                     </button>
                   </div>
-                  {loginError === 'Incorrect password' && <p className="mt-1 text-sm font-medium text-red-600">Incorrect password</p>}
+                  {loginError === 'Incorrect password' && <p className="mt-1 text-sm font-medium text-red-600">{t('Incorrect password')}</p>}
                 </div>
 
                 {loginError && loginError !== 'Incorrect username' && loginError !== 'Incorrect password' && (
@@ -479,7 +479,7 @@ const Login = () => {
           ) : forgotPasswordStep === 1 ? (
             <form onSubmit={handleSendRecoveryCode} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">{isAmharic ? 'የኢሜል አድራሻ' : 'Recovery email'}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('Recovery email')}</label>
                 <input
                   type="email"
                   value={forgotPasswordData.email}
@@ -491,18 +491,18 @@ const Login = () => {
                 />
               </div>
               <button type="submit" disabled={isLoading} className="w-full rounded-xl bg-ieps-blue-700 py-3 font-semibold text-white transition hover:bg-ieps-blue-800 disabled:opacity-70">
-                {isLoading ? (isAmharic ? 'ኮድ በመላክ ላይ...' : 'Sending code...') : (isAmharic ? 'ኮድ ላክ' : 'Send recovery code')}
+                {isLoading ? t('Sending code...') : t('Send recovery code')}
               </button>
             </form>
           ) : forgotPasswordStep === 2 ? (
             <form onSubmit={handleVerifyRecoveryCode} className="space-y-4">
               <p className={`rounded-lg p-3 text-sm ${developmentRecoveryCode ? 'bg-amber-50 text-amber-800' : 'bg-gray-50 text-gray-600'}`}>
                 {developmentRecoveryCode
-                  ? <>Development recovery code: <strong>{developmentRecoveryCode}</strong></>
-                  : <>{isAmharic ? 'ኮድ የተላከው ወደ' : 'Code sent to'} <strong>{forgotPasswordData.email}</strong></>}
+                  ? <>{t('Development recovery code:')} <strong>{developmentRecoveryCode}</strong></>
+                  : <>{t('Code sent to')} <strong>{forgotPasswordData.email}</strong></>}
               </p>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">{isAmharic ? 'ባለ 6 አሃዝ ኮድ' : '6-digit code'}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('6-digit code')}</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -516,31 +516,33 @@ const Login = () => {
                 />
               </div>
               <button type="submit" disabled={isLoading} className="w-full rounded-xl bg-ieps-blue-700 py-3 font-semibold text-white transition hover:bg-ieps-blue-800 disabled:opacity-70">
-                {isLoading ? (isAmharic ? 'ኮዱን በማረጋገጥ ላይ...' : 'Verifying code...') : (isAmharic ? 'ኮዱን አረጋግጥ' : 'Verify code')}
+                {isLoading ? t('Verifying code...') : t('Verify code')}
               </button>
               <button type="button" onClick={handleSendRecoveryCode} disabled={isLoading} className="w-full text-sm font-medium text-ieps-blue-600 hover:underline disabled:opacity-70">
-                {isAmharic ? 'ኮዱን እንደገና ላክ' : 'Resend code'}
+                {t('Resend code')}
               </button>
             </form>
           ) : (
             <form onSubmit={handleResetPassword} className="space-y-4">
               <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-                {isAmharic ? 'አዲስ የይለፍ ቃል ያስገቡ።' : 'Choose a new password for your account.'}
+                {t('Choose a new password for your account.')}
               </p>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">{isAmharic ? 'አዲስ የይለፍ ቃል' : 'New password'}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('New password')}</label>
                 <input
                   type="password"
                   value={forgotPasswordData.newPassword}
                   onChange={handleForgotPasswordChange('newPassword')}
                   autoComplete="new-password"
                   minLength={8}
+                  aria-invalid={newPasswordInvalid}
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ieps-blue-500"
                   required
                 />
+                {newPasswordInvalid && <p className="mt-1 text-xs text-red-600">{t('Password must contain at least 8 characters.')}</p>}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">{isAmharic ? 'አዲሱን የይለፍ ቃል ያረጋግጡ' : 'Confirm new password'}</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{t('Confirm new password')}</label>
                 <input
                   type="password"
                   value={forgotPasswordData.confirmPassword}
@@ -552,7 +554,7 @@ const Login = () => {
                 />
               </div>
               <button type="submit" disabled={isLoading} className="w-full rounded-xl bg-ieps-blue-700 py-3 font-semibold text-white transition hover:bg-ieps-blue-800 disabled:opacity-70">
-                {isLoading ? (isAmharic ? 'በማዘመን ላይ...' : 'Resetting...') : (isAmharic ? 'የይለፍ ቃል ቀይር' : 'Reset password')}
+                {isLoading ? t('Resetting...') : t('Reset password')}
               </button>
             </form>
           )}

@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { useUiText } from '../hooks/useUiText';
 
 const FocusAreaModal = ({ area, onClose, language }) => {
+  const t = useUiText();
   const navigate = useNavigate();
   
   if (!area) return null;
@@ -127,7 +129,7 @@ const FocusAreaModal = ({ area, onClose, language }) => {
           {/* Benefits Section */}
           <div>
             <h3 className="text-lg font-bold text-blue-900 mb-3">
-              {language === 'en' ? 'Key Benefits:' : 'ዋና ጥቅሞች:'}
+              {language === 'en' ? t('Key Benefits:') : 'ዋና ጥቅሞች:'}
             </h3>
             <p className="text-gray-700">
               {benefits}
@@ -138,7 +140,7 @@ const FocusAreaModal = ({ area, onClose, language }) => {
           {features && features.length > 0 && (
             <div>
               <h3 className="text-lg font-bold text-blue-900 mb-3">
-                {language === 'en' ? 'Module Features:' : 'ሞጁል ባህሪዎች:'}
+                {language === 'en' ? t('Module Features:') : 'ሞጁል ባህሪዎች:'}
               </h3>
               <ul className="space-y-2">
                 {features.map((feature, idx) => (
@@ -159,13 +161,13 @@ const FocusAreaModal = ({ area, onClose, language }) => {
               onClick={handleNavigate}
               className="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
             >
-              {language === 'en' ? 'Access Module' : 'ሞጁል ዳውንሎድ'}
+              {language === 'en' ? t('Access Module') : 'ሞጁል ዳውንሎድ'}
             </button>
             <button
               onClick={onClose}
               className="flex-1 bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
             >
-              {language === 'en' ? 'Close' : 'ዝጋ'}
+              {language === 'en' ? t('Close') : 'ዝጋ'}
             </button>
           </div>
         </div>

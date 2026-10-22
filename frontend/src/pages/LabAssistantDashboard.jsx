@@ -6,6 +6,7 @@ import { courseAssignmentApi, DASHBOARD_DATA_UPDATED_EVENT, evaluationApi } from
 import { SUBMISSIONS_UPDATED_EVENT } from '../services/formSubmissions';
 import PeerEvaluationModal, { standardPeerEvaluationSections } from '../components/PeerEvaluationModal';
 import PeerEvaluationDeadlineBadge from '../components/PeerEvaluationDeadlineBadge';
+import useUiText from '../hooks/useUiText';
 
 const evaluationSources = [
   { key: 'student', label: 'Students', weight: '50%', icon: BookOpen },
@@ -21,11 +22,12 @@ const metricToneClasses = {
   amber: { card: 'border-amber-100 bg-amber-50/70', icon: 'bg-amber-500 text-white', arrow: 'text-amber-600', link: 'text-amber-700' },
 };
 
-const FeedbackList = ({ items, emptyText }) => (
-  items?.length ? <ul className="space-y-3 text-sm">{items.map((item, index) => <li key={`${item}-${index}`} className="flex gap-2"><span>•</span><span>{item}</span></li>)}</ul> : <p className="text-sm text-slate-500">{emptyText}</p>
+const FeedbackList = ({ items, emptyText, t }) => (
+  items?.length ? <ul className="space-y-3 text-sm">{items.map((item, index) => <li key={`${item}-${index}`} className="flex gap-2"><span>•</span><span>{item}</span></li>)}</ul> : <p className="text-sm text-slate-500">{t(emptyText)}</p>
 );
 
 const LabAssistantDashboard = () => {
+  const t = useUiText();
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -58,7 +60,7 @@ const LabAssistantDashboard = () => {
           setError('');
         }
       } catch (loadError) {
-        if (mounted) setError(loadError?.message || 'Unable to load evaluation feedback.');
+        if (mounted) setError(loadError?.message || t('Unable to load evaluation feedback.'));
       } finally {
         if (mounted && showLoading) setLoading(false);
       }
@@ -98,7 +100,7 @@ const LabAssistantDashboard = () => {
       } catch (loadError) {
         if (mounted) {
           setPeerTargets([]);
-          setPeerTargetsError(loadError?.message || 'Unable to load Lab Assistant peers.');
+          setPeerTargetsError(loadError?.message || t('Unable to load Lab Assistant peers.'));
         }
       } finally {
         if (mounted) setPeerTargetsLoading(false);
@@ -108,7 +110,7 @@ const LabAssistantDashboard = () => {
     return () => { mounted = false; };
   }, [activeView, user?.id]);
 
-  if (loading && activeView !== 'peer-evaluation') return <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">Loading evaluation feedback...</section>;
+  if (loading && activeView !== 'peer-evaluation') return <section className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">{t('Loading evaluation feedback...')}</section>;
   if (error && activeView !== 'peer-evaluation') return <section className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">{error}</section>;
 
   const sourceScores = report?.sourceScores || {};
@@ -120,7 +122,7 @@ const LabAssistantDashboard = () => {
     setSource(selectedSource);
     navigate('/lab-assistant/dashboard#feedback');
   };
-  const displayName = user?.full_name || user?.name || user?.username || 'Lab Assistant';
+  const displayName = user?.full_name || user?.name || user?.username || t('Lab Assistant');
 
   const openPeerEvaluation = async (target) => {
     setPeerError('');
@@ -133,7 +135,7 @@ const LabAssistantDashboard = () => {
     try {
       const assignment = await courseAssignmentApi.preparePeerTarget(target.target_user_id);
       if (!assignment?.id) {
-        throw new Error('The peer evaluation assignment could not be prepared.');
+        throw new Error(t('The peer evaluation assignment could not be prepared.'));
       }
       const preparedTarget = { ...target, id: assignment.id, peer_evaluation_id: assignment.id };
       setPeerTargets((current) => current.map((peer) => (
@@ -141,7 +143,7 @@ const LabAssistantDashboard = () => {
       )));
       setSelectedPeerTarget(preparedTarget);
     } catch (prepareError) {
-      setPeerError(prepareError?.message || 'Unable to prepare this peer evaluation.');
+      setPeerError(prepareError?.message || t('Unable to prepare this peer evaluation.'));
     } finally {
       setPreparingPeerId(null);
     }
@@ -172,10 +174,10 @@ const LabAssistantDashboard = () => {
           ? targets.filter((target) => ['lab_assistant', 'ara', 'lab assistant', 'lab-assistant', 'labassistant'].includes(String(target.target_role || '').trim().toLowerCase()))
           : []);
       } catch (refreshError) {
-        setPeerTargetsError(refreshError?.message || 'Evaluation submitted, but peer statuses could not be refreshed.');
+        setPeerTargetsError(refreshError?.message || t('Evaluation submitted, but peer statuses could not be refreshed.'));
       }
     } catch (submitError) {
-      setPeerError(submitError?.message || 'Unable to submit peer evaluation.');
+      setPeerError(submitError?.message || t('Unable to submit peer evaluation.'));
       throw submitError;
     } finally {
       setPeerSubmitting(false);
@@ -188,12 +190,12 @@ const LabAssistantDashboard = () => {
         <div className="relative z-10 flex items-center gap-4 sm:gap-5">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/20 sm:h-14 sm:w-14"><UserRound className="h-7 w-7" /></span>
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-800">Instructor Performance</p>
-            <h1 id="lab-assistant-dashboard-title" className="mt-1 text-2xl font-bold text-blue-950 sm:text-3xl">Welcome, {displayName}</h1>
-            <p className="mt-1 text-sm font-medium text-slate-600">Lab Assistant / ARA</p>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-800">{t('Instructor Performance')}</p>
+            <h1 id="lab-assistant-dashboard-title" className="mt-1 text-2xl font-bold text-blue-950 sm:text-3xl">{t('Welcome')}, {displayName}</h1>
+            <p className="mt-1 text-sm font-medium text-slate-600">{t('Lab Assistant / ARA')}</p>
             <button type="button" onClick={() => navigate('/lab-assistant/dashboard#overview')} className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/80 px-4 py-2 text-xs font-semibold text-blue-900 shadow-sm transition hover:bg-white">
               <GraduationCap className="h-4 w-4 text-blue-700" />
-              {activeView === 'feedback' ? 'My Evaluation Feedback' : activeView === 'peer-evaluation' ? 'Peer Evaluation' : 'Performance Overview'}
+              {t(activeView === 'feedback' ? 'My Evaluation Feedback' : activeView === 'peer-evaluation' ? 'Peer Evaluation' : 'Performance Overview')}
             </button>
           </div>
         </div>
@@ -213,7 +215,7 @@ const LabAssistantDashboard = () => {
               <Sparkles className="absolute -right-7 top-1 h-5 w-5 text-amber-500" />
             </div>
           </div>
-          <p className="mb-7 max-w-28 text-xs font-semibold italic leading-relaxed text-blue-900">“Quality teaching builds a brighter future.”</p>
+          <p className="mb-7 max-w-28 text-xs font-semibold italic leading-relaxed text-blue-900">{t('“Quality teaching builds a brighter future.”')}</p>
         </div>
       </header>
 
@@ -237,9 +239,9 @@ const LabAssistantDashboard = () => {
                 <button key={key} type="button" onClick={onClick} className={`group relative min-h-32 rounded-2xl border p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${colors.card}`}>
                   <span className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm ${colors.icon}`}><Icon className="h-5 w-5" /></span>
                   <ArrowUpRight className={`absolute right-4 top-4 h-4 w-4 ${colors.arrow}`} />
-                  <span className="mt-3 block text-xs font-semibold text-slate-600">{label}</span>
+                  <span className="mt-3 block text-xs font-semibold text-slate-600">{t(label)}</span>
                   <span className="mt-1 block text-2xl font-bold tabular-nums text-slate-950">{formatScore(value)}</span>
-                  <span className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${colors.link}`}>{hint}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
+                  <span className={`mt-2 inline-flex items-center gap-1 text-xs font-semibold ${colors.link}`}>{t(hint)}<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span>
                 </button>
               );
             })}
@@ -250,10 +252,10 @@ const LabAssistantDashboard = () => {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <span className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-700"><ChartNoAxesColumnIncreasing className="h-5 w-5" /></span>
-                  <div><h2 id="evaluator-breakdown-title" className="text-base font-bold text-slate-900">Evaluation Breakdown</h2><p className="mt-1 text-xs text-slate-500">Scores by evaluator and contribution to your overall score.</p></div>
+                  <div><h2 id="evaluator-breakdown-title" className="text-base font-bold text-slate-900">{t('Evaluation Breakdown')}</h2><p className="mt-1 text-xs text-slate-500">{t('Scores by evaluator and contribution to your overall score.')}</p></div>
                 </div>
-                <button type="button" aria-label="Evaluation period: October 11, 2025 to October 25, 2026" className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-[11px] font-semibold text-slate-600 shadow-sm">
-                  <CalendarDays className="h-4 w-4 shrink-0 text-blue-600" /><span><span className="block text-[10px] font-medium text-slate-400">Evaluation Period</span>Oct 11, 2025 - Oct 25, 2026</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <button type="button" aria-label={t('Evaluation period: October 11, 2025 to October 25, 2026')} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-[11px] font-semibold text-slate-600 shadow-sm">
+                  <CalendarDays className="h-4 w-4 shrink-0 text-blue-600" /><span><span className="block text-[10px] font-medium text-slate-400">{t('Evaluation Period')}</span>{t('Oct 11, 2025 - Oct 25, 2026')}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                 </button>
               </div>
               <div className="space-y-2">
@@ -265,9 +267,9 @@ const LabAssistantDashboard = () => {
                   return (
                     <div key={key} className="grid gap-3 rounded-xl border border-slate-100 bg-white p-3 sm:grid-cols-[42px_minmax(150px,1fr)_minmax(120px,1.5fr)_74px] sm:items-center">
                       <span className={`flex h-10 w-10 items-center justify-center rounded-full ${colors.icon}`}><Icon className="h-5 w-5" /></span>
-                      <div className="min-w-0"><h3 className="text-xs font-bold text-slate-800">{label}</h3><p className="mt-1 text-[10px] leading-relaxed text-slate-500">{description}</p></div>
+                      <div className="min-w-0"><h3 className="text-xs font-bold text-slate-800">{t(label)}</h3><p className="mt-1 text-[10px] leading-relaxed text-slate-500">{t(description)}</p></div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full ${key === 'student' ? 'bg-blue-500' : key === 'deptHead' ? 'bg-violet-500' : 'bg-amber-500'}`} style={{ width: `${score}%` }} /></div>
-                      <div className="text-right"><p className="text-xs font-bold tabular-nums text-slate-800">{formatScore(score)}</p><p className="mt-0.5 text-[10px] text-slate-500">Weight: {weight}</p></div>
+                      <div className="text-right"><p className="text-xs font-bold tabular-nums text-slate-800">{formatScore(score)}</p><p className="mt-0.5 text-[10px] text-slate-500">{t('Weight')}: {weight}</p></div>
                     </div>
                   );
                 })}
@@ -281,54 +283,54 @@ const LabAssistantDashboard = () => {
                   <Sparkles className="absolute -right-3 -top-1 h-4 w-4 text-amber-500" />
                 </div>
               </div>
-              <h3 className="mt-3 text-sm font-bold text-slate-900">Your Performance Matters</h3>
-              <p className="mt-2 text-xs leading-relaxed text-slate-600">Your evaluation helps improve teaching quality and supports academic excellence.</p>
+              <h3 className="mt-3 text-sm font-bold text-slate-900">{t('Your Performance Matters')}</h3>
+              <p className="mt-2 text-xs leading-relaxed text-slate-600">{t('Your evaluation helps improve teaching quality and supports academic excellence.')}</p>
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-100/70 p-3 text-left text-[11px] leading-relaxed text-blue-900">
-                <p className="font-semibold">ⓘ No evaluation data available yet.</p>
-                <p className="mt-1">Results will appear after the evaluation period is completed.</p>
+                <p className="font-semibold">{t('ⓘ No evaluation data available yet.')}</p>
+                <p className="mt-1">{t('Results will appear after the evaluation period is completed.')}</p>
               </div>
             </aside>
           </section>
         </>
       ) : activeView === 'feedback' ? (
         <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" aria-label="Filter feedback by evaluator">
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Evaluation feedback sources">{feedbackSources.map(({ key, label }) => <button key={key} type="button" role="tab" aria-selected={source === key} onClick={() => setSource(key)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${source === key ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{label}</button>)}</div>
-            <p className="mt-4 text-sm font-semibold text-slate-700">{feedbackSources.find(({ key }) => key === source)?.label} score: {formatScore(selectedScore)}</p>
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" aria-label={t('Filter feedback by evaluator')}>
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('Evaluation feedback sources')}>{feedbackSources.map(({ key, label }) => <button key={key} type="button" role="tab" aria-selected={source === key} onClick={() => setSource(key)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${source === key ? 'bg-emerald-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{t(label)}</button>)}</div>
+            <p className="mt-4 text-sm font-semibold text-slate-700">{t(feedbackSources.find(({ key }) => key === source)?.label)} {t('score')}: {formatScore(selectedScore)}</p>
           </section>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 text-emerald-950"><h2 className="mb-4 text-lg font-bold text-emerald-800">Strengths &amp; Positive Highlights</h2><FeedbackList items={selectedFeedback.strengths} emptyText="No strengths have been recorded yet." /></section>
-            <section className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-amber-950"><h2 className="mb-4 text-lg font-bold text-amber-800">Improvement Suggestions</h2><FeedbackList items={selectedFeedback.weaknesses || selectedFeedback.improvements} emptyText="No improvement suggestions have been recorded yet." /></section>
+            <section className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6 text-emerald-950"><h2 className="mb-4 text-lg font-bold text-emerald-800">{t('Strengths & Positive Highlights')}</h2><FeedbackList items={selectedFeedback.strengths} emptyText="No strengths have been recorded yet." t={t} /></section>
+            <section className="rounded-2xl border border-amber-100 bg-amber-50 p-6 text-amber-950"><h2 className="mb-4 text-lg font-bold text-amber-800">{t('Improvement Suggestions')}</h2><FeedbackList items={selectedFeedback.weaknesses || selectedFeedback.improvements} emptyText="No improvement suggestions have been recorded yet." t={t} /></section>
           </div>
         </>
       ) : (
         <section className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Peer Evaluation</h2>
-            <p className="mt-1 text-sm text-slate-500">Evaluate Lab Assistant colleagues in your college. This contributes to your 20% peer score.</p>
+            <h2 className="text-lg font-bold text-slate-900">{t('Peer Evaluation')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('Evaluate Lab Assistant colleagues in your college. This contributes to your 20% peer score.')}</p>
           </div>
           {peerError ? <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{peerError}</p> : null}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">Lab Assistant</th><th className="px-4 py-3">Deadline</th><th className="px-4 py-3">Action</th></tr></thead>
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-4 py-3">{t('Lab Assistant')}</th><th className="px-4 py-3">{t('Deadline')}</th><th className="px-4 py-3">{t('Action')}</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {peerTargetsLoading ? (
-                  <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">Loading Lab Assistant peers...</td></tr>
+                  <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">{t('Loading Lab Assistant peers...')}</td></tr>
                 ) : peerTargetsError ? (
                   <tr><td colSpan="3" className="px-4 py-8 text-center text-red-600">{peerTargetsError}</td></tr>
                 ) : peerTargets.length ? peerTargets.map((target) => (
                   <tr key={target.target_user_id}>
-                    <td className="px-4 py-4 font-medium text-slate-900">{target.instructor_name || target.username || 'Lab Assistant'}</td>
+                    <td className="px-4 py-4 font-medium text-slate-900">{target.instructor_name || target.username || t('Lab Assistant')}</td>
                     <td className="px-4 py-4"><PeerEvaluationDeadlineBadge item={target} /></td>
                     <td className="px-4 py-4">
                       {target.is_submitted || target.is_evaluated ? (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="inline-flex items-center gap-1 font-semibold text-emerald-600">
                             <Check size={15} aria-hidden="true" />
-                            Evaluated ({Number(target.score ?? target.total_score ?? 0).toFixed(0)}/100)
+                            {t('Evaluated')} ({Number(target.score ?? target.total_score ?? 0).toFixed(0)}/100)
                           </span>
-                          <button type="button" onClick={() => setSelectedPeerTarget(target)} className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 underline hover:text-blue-900"><Eye size={14} /> View Details</button>
+                          <button type="button" onClick={() => setSelectedPeerTarget(target)} className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 underline hover:text-blue-900"><Eye size={14} /> {t('View Details')}</button>
                         </div>
                       ) : (
                         <button
@@ -338,13 +340,13 @@ const LabAssistantDashboard = () => {
                           className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 font-semibold text-indigo-700 hover:bg-indigo-100 disabled:cursor-wait disabled:opacity-60"
                         >
                           <Star size={16} fill="currentColor" />
-                          {preparingPeerId === target.target_user_id ? 'Preparing...' : 'Evaluate'}
+                          {preparingPeerId === target.target_user_id ? t('Preparing...') : t('Evaluate')}
                         </button>
                       )}
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">No Lab Assistant peers found in your college.</td></tr>
+                  <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">{t('No Lab Assistant peers found in your college.')}</td></tr>
                 )}
               </tbody>
             </table>

@@ -1,8 +1,10 @@
 import formatEvaluationDeadline, {
   formatEvaluationDeadlineDate,
 } from '../utils/formatEvaluationDeadline';
+import { useUiText } from '../hooks/useUiText';
 
 const EvaluationDeadlineBadge = ({ value, highlight = false }) => {
+  const t = useUiText();
   const candidates = value && typeof value === 'object'
     ? [value.expiryDate, value.deadline]
     : [value];
@@ -14,7 +16,7 @@ const EvaluationDeadlineBadge = ({ value, highlight = false }) => {
     ? highlight
       ? `⏰ ${formatEvaluationDeadlineDate(deadline)}`
       : formatEvaluationDeadline(deadline)
-    : 'No Deadline Configured';
+    : t('No Deadline Configured');
 
   return (
     <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset ${

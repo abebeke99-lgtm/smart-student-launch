@@ -3,6 +3,7 @@ import { criteriaApi } from '../services/api';
 import LanguageToggle from './LanguageToggle';
 import { getQuestionText, groupCriteriaByCategory } from '../utils/evaluationCriteria';
 import { validateEvaluationFeedback } from '../utils/validateEvaluationFeedback';
+import { useUiText } from '../hooks/useUiText';
 
 const RATING_SCALE = [1, 2, 3, 4, 5, 'NA'];
 const supervisorCriteriaAmharic = [
@@ -141,6 +142,7 @@ export default function InstructorEvaluationCriteriaModal({
   evaluatorType = 'dept_head',
   completionRole = 'Immediate Supervisor'
 }) {
+  const t = useUiText();
   const [error, setError] = React.useState('');
   const [isEditMode, setIsEditMode] = React.useState(mode === 'edit');
   const [criteria, setCriteria] = React.useState(supervisorCriteria);
@@ -231,11 +233,11 @@ export default function InstructorEvaluationCriteriaModal({
   const isAmharic = language === 'am';
   const labels = isAmharic
     ? { title: 'የመምህራን/ARA ውጤታማነት ግምገማ ቅዋሙስ (በቅርብ ተቆጣጣሪ የሚሞላ)', university: 'የመቅደላ አምባ ዩኒቨርሲቲ', name: 'የተገምጋሚው ስም', college: 'ኮሌጅ', department: 'የትምህርት ክፍል', year: 'የትምህርት ዘመን', semester: 'ሴሚስተር', scale: 'መለኪያ: 1 = በጣም ዝቅተኛ, 2 = ዝቅተኛ, 3 = መካከለኛ, 4 = ከፍተኛ, 5 = በጣም ከፍተኛ, NA = አይመለከተኝም', scored: 'የተመዘኑ መስፈርቶች', average: 'አማካይ (5 ደረጃ)', final: 'የመጨረሻ ውጤት (0-100)', strengths: 'ጠንካራ ጎኖች', improvements: 'የማሻሻያ መስኮች', cancel: 'ሰርዝ', close: 'ዝጋ', edit: 'ግምገማ አርም', submit: 'ግምገማ ላክ', submitting: 'በመላክ ላይ...' }
-    : { title: `INSTRUCTORS' PERFORMANCE EVALUATION CHECKLIST (To be completed by ${completionRole})`, university: 'Mekdela Amba University', name: 'Evaluated Name', college: 'College', department: 'Department', year: 'Academic Year', semester: 'Semester', scale: 'Scale: 1 = Very Low, 2 = Low, 3 = Average, 4 = High, 5 = Very High, NA = Not Applicable', scored: 'Criteria Scored', average: 'Average (5-point scale)', final: 'Final Score (0-100)', strengths: 'Strengths', improvements: 'Areas for improvement', cancel: 'Cancel', close: 'Close', edit: 'Edit Evaluation', submit: 'Submit Evaluation', submitting: 'Submitting...' };
+    : { title: `${t("INSTRUCTORS' PERFORMANCE EVALUATION CHECKLIST")} (${t('To be completed by')} ${t(completionRole)})`, university: t('Mekdela Amba University'), name: t('Evaluated Name'), college: t('College'), department: t('Department'), year: t('Academic Year'), semester: t('Semester'), scale: t('Scale: 1 = Very Low, 2 = Low, 3 = Average, 4 = High, 5 = Very High, NA = Not Applicable'), scored: t('Criteria Scored'), average: t('Average (5-point scale)'), final: t('Final Score (0-100)'), strengths: t('Strengths'), improvements: t('Areas for improvement'), cancel: t('Cancel'), close: t('Close'), edit: t('Edit Evaluation'), submit: t('Submit Evaluation'), submitting: t('Submitting...') };
   const displayLabels = resolvedEvaluatorType === 'ara_dept_head'
     ? {
       ...labels,
-      title: isAmharic ? 'የአካዳሚክ እና ምርምር ረዳት (ARA) የአፈጻጸም ግምገማ ቅጽ' : 'ACADEMIC AND RESEARCH ASSISTANTS (ARA) PERFORMANCE EVALUATION FORM',
+      title: isAmharic ? 'የአካዳሚክ እና ምርምር ረዳት (ARA) የአፈጻጸም ግምገማ ቅጽ' : t('ACADEMIC AND RESEARCH ASSISTANTS (ARA) PERFORMANCE EVALUATION FORM'),
       university: isAmharic ? 'የመቅደላ አምባ ዩኒቨርሲቲ' : 'MEKDELA AMBA UNIVERSITY',
       departmentHeadSubtitle: isAmharic ? '[በክፍሉ ተቆጣጣሪ የሚሞላ]' : '[TO BE FILLED BY THE DEPARTMENT HEAD]',
       name: isAmharic ? 'የARA ስም' : 'Name of ARA',
@@ -440,8 +442,8 @@ export default function InstructorEvaluationCriteriaModal({
             <div>
               {/* Category Header */}
               <h3 className="mb-2 flex items-center justify-between gap-3 pl-1 text-xs font-bold uppercase tracking-wider text-gray-700">
-                {isAmharic ? (categoryAmharic[currentCategory.category] || currentCategory.category) : currentCategory.category}
-                <span className="shrink-0 normal-case font-normal tracking-normal text-gray-500">Category {currentCategoryIndex + 1} of {criteriaSections.length}</span>
+                {isAmharic ? (categoryAmharic[currentCategory.category] || currentCategory.category) : t(currentCategory.category)}
+                <span className="shrink-0 normal-case font-normal tracking-normal text-gray-500">{isAmharic ? `ምድብ ${currentCategoryIndex + 1} ከ ${criteriaSections.length}` : t('Category {current} of {total}').replace('{current}', currentCategoryIndex + 1).replace('{total}', criteriaSections.length)}</span>
               </h3>
 
               {/* Criteria Items */}
@@ -461,7 +463,7 @@ export default function InstructorEvaluationCriteriaModal({
                         {getQuestionText(criterion, language)}
                         {criterionErrors.includes(criterion.id) && (
                           <span className="mt-1 block text-[11px] font-semibold text-rose-700" role="alert">
-                            ⚠️ Please select a score for this criterion before proceeding.
+                            ⚠️ {t('Please select a score for this criterion before proceeding.')}
                           </span>
                         )}
                       </p>
@@ -546,7 +548,7 @@ export default function InstructorEvaluationCriteriaModal({
           )}
           {isEditMode && currentCategoryIndex > 0 && (
             <button type="button" onClick={() => { setCurrentCategoryIndex((index) => index - 1); setError(''); }} className="px-6 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50">
-              Previous
+              {t('Previous')}
             </button>
           )}
           {isEditMode && (

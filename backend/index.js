@@ -33,7 +33,11 @@ const {
   seedLocalDepartmentEvaluationWindowsIfMissing,
 } = require("./config/departmentEvaluationWindows");
 const { ensureUserProfileSettings } = require("./utils/profileSettings");
-const { normalizePhoneNumber, isValidPhoneNumber } = require("./utils/phone");
+const {
+  normalizePhoneNumber,
+  isValidPhoneNumber,
+  isValidRegistrationPhoneNumber,
+} = require("./utils/phone");
 const {
   validateEvaluationFeedback,
 } = require("./utils/evaluationFeedbackValidation");
@@ -80,6 +84,10 @@ const { sendSms } = require("./services/smsService");
 const {
   sendTelegramNotice,
 } = require("./services/telegramService");
+const {
+  isValidPassword,
+  validateRequestInput,
+} = require("./utils/inputValidation");
 const standardInstructorCriteria = require("./data/standardInstructorCriteria");
 
 const upload = multer({
@@ -154,6 +162,7 @@ app.use(
 );
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(validateRequestInput);
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "ipes-session-secret",
@@ -4346,8 +4355,7 @@ app.post("/api/auth/change-password", mwAuthenticateToken, async (req, res) => {
 
     if (!userId) {
       console.error("SERVER CHANGE PASSWORD ERROR: Missing auth user id.", {
-        user: req.user,
-        body: req.body,
+        userId: req.user?.id ?? null,
       });
       return res.status(401).json({
         success: false,
@@ -4367,10 +4375,10 @@ app.post("/api/auth/change-password", mwAuthenticateToken, async (req, res) => {
       });
     }
 
-    if (String(newPassword).trim().length < 6) {
+    if (!isValidPassword(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 6 characters.",
+        message: "Password must contain at least 8 characters.",
       });
     }
 
@@ -4409,7 +4417,7 @@ app.post("/api/auth/change-password", mwAuthenticateToken, async (req, res) => {
         .json({ success: false, message: "Current password is incorrect." });
     }
 
-    const hashedPassword = await bcrypt.hash(String(newPassword).trim(), 12);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
     await pool.query(
       "UPDATE users SET password_hash = ?, is_first_login = FALSE WHERE id = ?",
       [hashedPassword, userId],
@@ -4562,7 +4570,7 @@ app.post(
       name,
       role: requestedRole,
     } = req.body;
-    phone_number = normalizePhoneNumber(phone_number);
+    const submittedPhoneNumber = String(phone_number ?? "");
     const role = resolveRoleFromType(requestedRole || "instructor");
     if (!["instructor", "lab_assistant"].includes(role))
       return res.status(400).json({
@@ -4607,12 +4615,13 @@ app.post(
           "first_name and last_name must each be between 3 and 30 characters.",
       });
     }
-    if (!isValidPhoneNumber(phone_number)) {
+    if (!isValidRegistrationPhoneNumber(submittedPhoneNumber)) {
       return res.status(400).json({
         message:
-          "phone_number must start with 09 or 07 and contain exactly 10 digits.",
+          "Phone number must contain only numbers and be exactly 10 digits starting with 09 or 07.",
       });
     }
+    phone_number = normalizePhoneNumber(submittedPhoneNumber);
 
     const resolvedDepartmentId = await resolveDepartmentId(
       department_id ?? department ?? department_name,
@@ -5505,8 +5514,10 @@ app.get(
       const departmentId = await resolveDepartmentId(departmentValue);
       if (!departmentId)
         return res.status(404).json({ message: "Department was not found." });
+      const academicYear = String(req.query.academic_year || "").trim();
       const [rows] = await pool.query(
         `SELECT ca.id, ca.course_id, ca.instructor_id, ca.program_type, ca.year_level, ca.semester, ca.section,
+        ca.academic_year, ca.cycle_id,
         ca.is_student_published,
         ca.is_peer_published,
         c.code AS course_code, c.name AS course_name,
@@ -5514,8 +5525,10 @@ app.get(
        FROM course_assignments ca
        INNER JOIN courses c ON c.id = ca.course_id
        INNER JOIN instructors i ON i.id = ca.instructor_id
-       WHERE ca.department_id = ? ORDER BY ca.created_at DESC`,
-        [departmentId],
+       WHERE ca.department_id = ?
+         AND (? = '' OR ca.academic_year = ?)
+       ORDER BY ca.created_at DESC`,
+        [departmentId, academicYear, academicYear],
       );
       return res.json(rows);
     } catch (error) {
@@ -5846,8 +5859,6 @@ app.post(
   authorizeRoles("dept_head", "admin"),
   async (req, res) => {
     try {
-      const activeCycle = await getActiveEvaluationCycle();
-      if (!activeCycle) return res.status(409).json({ message: "There is no active evaluation cycle." });
       const { department_id, program_type, year_level, semester, section } =
         req.body;
       const departmentValue =
@@ -5857,12 +5868,11 @@ app.post(
       const departmentId = await resolveDepartmentId(departmentValue);
       if (!departmentId)
         return res.status(404).json({ message: "Department was not found." });
-      const academicYear = String(
-        req.body.academic_year || activeCycle.academic_year,
-      );
-      if (academicYear !== String(activeCycle.academic_year)) {
-        return res.status(409).json({
-          message: `The active evaluation cycle is ${activeCycle.academic_year} ${activeCycle.semester}.`,
+      const academicYear = String(req.body.academic_year || "").trim();
+      const selectedSemester = String(semester || "").trim();
+      if (!academicYear || !selectedSemester) {
+        return res.status(400).json({
+          message: "Academic year and semester are required to publish evaluations.",
         });
       }
       if (req.body.course_id && req.body.lab_assistant_id) {
@@ -5870,18 +5880,18 @@ app.post(
         const labAssistantId = Number(req.body.lab_assistant_id);
         const sectionValue = normalizeSectionValue(section);
         const [[assignment]] = await pool.query(
-          `SELECT ca.id, ca.department_id, ca.course_id, ca.program_type, ca.year_level,
+          `SELECT ca.id, ca.cycle_id, ca.department_id, ca.course_id, ca.program_type, ca.year_level,
                   ca.semester, ca.section, ca.academic_year, c.code AS course_code, c.name
            FROM course_assignments ca
            INNER JOIN courses c ON c.id = ca.course_id
-           WHERE ca.course_id = ? AND ca.cycle_id = ?
+           WHERE ca.course_id = ? AND ca.academic_year = ?
              AND LOWER(TRIM(REPLACE(REPLACE(ca.section, 'Section ', ''), 'section ', ''))) =
                  LOWER(TRIM(?))
              AND LOWER(TRIM(ca.year_level)) = LOWER(TRIM(?))
              AND LOWER(TRIM(ca.semester)) = LOWER(TRIM(?))
              AND (? = '' OR LOWER(TRIM(COALESCE(ca.program_type, ''))) = LOWER(TRIM(?)))
            LIMIT 1`,
-          [courseId, activeCycle.id, sectionValue, year_level, semester, program_type || "", program_type || ""],
+          [courseId, academicYear, sectionValue, year_level, selectedSemester, program_type || "", program_type || ""],
         );
         if (!assignment) return res.status(404).json({ message: "Course section assignment was not found." });
         if (String(req.user?.role || "").toLowerCase() === "dept_head" && Number(req.user.department_id) !== Number(assignment.department_id)) {
@@ -5929,8 +5939,8 @@ app.post(
         for (const student of students) {
           const [lectureDispatch] = await pool.query(
             `SELECT id FROM evaluation_dispatches
-             WHERE student_id = ? AND assignment_id = ? AND student_group = 'student' AND cycle_id = ? LIMIT 1`,
-            [student.id, assignment.id, activeCycle.id],
+             WHERE student_id = ? AND assignment_id = ? AND student_group = 'student' AND cycle_id <=> ? LIMIT 1`,
+            [student.id, assignment.id, assignment.cycle_id],
           );
           if (!lectureDispatch.length) {
             await pool.query(
@@ -5939,7 +5949,7 @@ app.post(
                  course_code, course_name, academic_year, semester, year_level, student_group,
                  is_student_published, created_by, payload)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 1, ?, ?)`,
-              [assignment.id, activeCycle.id, assignment.department_id, assignment.program_type || null, student.id,
+              [assignment.id, assignment.cycle_id, assignment.department_id, assignment.program_type || null, student.id,
                 assignment.course_id, assignment.course_code, assignment.name, assignment.academic_year,
                 assignment.semester, assignment.year_level, req.user.id,
                 JSON.stringify({ source: "student_publish", course_id: assignment.course_id, section_id: assignment.id })],
@@ -5947,8 +5957,8 @@ app.post(
           }
           const [existing] = await pool.query(
             `SELECT id FROM evaluation_dispatches
-             WHERE student_id = ? AND assignment_id = ? AND student_group = 'lab_assistant' AND cycle_id = ? LIMIT 1`,
-            [student.id, assignment.id, activeCycle.id],
+             WHERE student_id = ? AND assignment_id = ? AND student_group = 'lab_assistant' AND cycle_id <=> ? LIMIT 1`,
+            [student.id, assignment.id, assignment.cycle_id],
           );
           if (existing.length) {
             await pool.query(
@@ -5963,7 +5973,7 @@ app.post(
                  course_code, course_name, academic_year, semester, year_level, student_group,
                  is_student_published, created_by, payload)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lab_assistant', 1, ?, ?)`,
-              [assignment.id, activeCycle.id, assignment.department_id, assignment.program_type || null, student.id,
+              [assignment.id, assignment.cycle_id, assignment.department_id, assignment.program_type || null, student.id,
                 assignment.course_id, assignment.course_code, assignment.name, assignment.academic_year,
                 assignment.semester, assignment.year_level, req.user.id, payload],
             );
@@ -5973,11 +5983,10 @@ app.post(
       }
       const duplicateFilters = [
         "ca.department_id = ?",
-        "ca.cycle_id = ?",
         "ca.academic_year = ?",
         "ca.is_student_published = 1",
       ];
-      const duplicateParams = [departmentId, activeCycle.id, academicYear];
+      const duplicateParams = [departmentId, academicYear];
       [
         ["ca.program_type", program_type],
         ["ca.year_level", year_level],
@@ -6014,8 +6023,8 @@ app.post(
         ))
       )
         return;
-      const filters = ["ca.department_id = ?", "ca.cycle_id = ?"];
-      const params = [departmentId, activeCycle.id];
+      const filters = ["ca.department_id = ?", "ca.academic_year = ?"];
+      const params = [departmentId, academicYear];
       [
         ["ca.program_type", program_type],
         ["ca.year_level", year_level],
@@ -6028,7 +6037,7 @@ app.post(
         }
       });
       const [assignments] = await pool.query(
-        `SELECT ca.id, ca.course_id, ca.instructor_id, ca.academic_year,
+        `SELECT ca.id, ca.cycle_id, ca.course_id, ca.instructor_id, ca.academic_year,
                 ca.program_type, ca.year_level, ca.semester, ca.section,
                 c.code AS course_code, c.name, (lc.course_id IS NOT NULL) AS is_lab
          FROM course_assignments ca
@@ -6066,7 +6075,7 @@ app.post(
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 1, ?, ?)`,
             [
               assignment.id,
-              activeCycle.id,
+              assignment.cycle_id,
               departmentId,
               assignment.program_type || null,
               student.id,
@@ -6100,8 +6109,6 @@ app.post(
     let connection;
     try {
       connection = await pool.getConnection();
-      const activeCycle = await getActiveEvaluationCycle(connection);
-      if (!activeCycle) return res.status(409).json({ message: "There is no active evaluation cycle." });
       const { department_id, program_type, year_level, semester, section } =
         req.body;
       const departmentValue =
@@ -6109,24 +6116,19 @@ app.post(
           ? req.user.department_id || req.user.department
           : department_id || req.user.department_id || req.user.department;
       const departmentId = await resolveDepartmentId(departmentValue);
-      const academicYear = String(
-        req.body.academic_year || activeCycle.academic_year,
-      );
-      if (academicYear !== String(activeCycle.academic_year)) {
-        return res.status(409).json({
-          message: `The active evaluation cycle is ${activeCycle.academic_year} ${activeCycle.semester}.`,
-        });
+      const academicYear = String(req.body.academic_year || "").trim();
+      if (!academicYear) {
+        return res.status(400).json({ message: "Academic year is required to withdraw evaluations." });
       }
       if (!departmentId)
         return res.status(404).json({ message: "Department was not found." });
 
       const filters = [
         "ca.department_id = ?",
-        "ca.cycle_id = ?",
         "ca.academic_year = ?",
         "ca.is_student_published = 1",
       ];
-      const params = [departmentId, activeCycle.id, academicYear];
+      const params = [departmentId, academicYear];
       [
         ["ca.program_type", program_type],
         ["ca.year_level", year_level],
@@ -6166,12 +6168,11 @@ app.post(
       );
       const labDispatchFilters = [
         "department_id = ?",
-        "cycle_id = ?",
         "student_group = 'lab_assistant'",
         "academic_year = ?",
         "semester <=> ?",
       ];
-      const labDispatchParams = [departmentId, activeCycle.id, academicYear, semester || null];
+      const labDispatchParams = [departmentId, academicYear, semester || null];
       if (year_level) {
         labDispatchFilters.push("year_level = ?");
         labDispatchParams.push(year_level);
@@ -6650,8 +6651,8 @@ app.get(
       queryStage = "normalize_peer_evaluations";
       const normalized = rows.map((row) => ({
         ...row,
-        deadline: evaluationDeadline,
-        expiryDate: evaluationDeadline,
+        deadline: row.deadline || evaluationDeadline,
+        expiryDate: row.deadline || evaluationDeadline,
         total_score: row.total_score !== null ? Number(row.total_score) : 0,
         is_evaluated: Boolean(row.is_evaluated),
         responses: row.responses
@@ -8869,118 +8870,13 @@ app.get(
       const studentDepartmentId = Number(
         req.user?.department_id || student.department_id || 0,
       );
-      const activeCycle = await getActiveEvaluationCycle();
       const evaluationDeadline = await getDepartmentEvaluationDeadline(
         studentDepartmentId,
-        activeCycle?.end_at,
-      );
-      const isExpired = isEvaluationDeadlineExpired(evaluationDeadline);
-      if (isExpired || !activeCycle) {
-        return res.status(200).json({
-          success: true,
-          data: {
-            evaluations: [],
-            deadline: evaluationDeadline,
-            expiryDate: evaluationDeadline,
-            isExpired,
-          },
-        });
-      }
-      const normalizedSection = normalizeSectionValue(student.section);
-      const sectionPredicate = `LOWER(TRIM(REPLACE(REPLACE(ca.section, 'Section ', ''), 'section ', ''))) =
-        LOWER(TRIM(REPLACE(REPLACE(?, 'Section ', ''), 'section ', '')))`;
-      const studentScope = [
-        studentDepartmentId,
-        activeCycle.id,
-        student.year_level,
-        student.semester,
-        normalizedSection,
-        student.program_type || "",
-        student.program_type || "",
-      ];
-
-      await pool.query(
-        `INSERT INTO evaluation_dispatches
-          (assignment_id, cycle_id, department_id, program_type, student_id, course_id,
-           course_code, course_name, academic_year, semester, year_level, student_group,
-           is_student_published, created_by, payload)
-         SELECT ca.id, ca.cycle_id, ca.department_id, ca.program_type, ?, ca.course_id,
-                c.code, c.name, ca.academic_year, ca.semester, ca.year_level, 'student',
-                1, ?, JSON_OBJECT('source', 'student_publish', 'course_id', ca.course_id, 'section_id', ca.id)
-         FROM course_assignments ca
-         INNER JOIN courses c ON c.id = ca.course_id
-         WHERE ca.department_id = ? AND ca.cycle_id = ?
-           AND ca.is_student_published = 1
-           AND LOWER(TRIM(ca.year_level)) = LOWER(TRIM(?))
-           AND LOWER(TRIM(ca.semester)) = LOWER(TRIM(?))
-           AND ${sectionPredicate}
-           AND (? = '' OR LOWER(TRIM(COALESCE(ca.program_type, ''))) = LOWER(TRIM(?)))
-           AND NOT EXISTS (
-             SELECT 1 FROM evaluation_dispatches existing
-             WHERE existing.student_id = ? AND existing.assignment_id = ca.id
-               AND existing.cycle_id = ca.cycle_id AND existing.student_group = 'student'
-           )`,
-        [
-          student.id,
-          req.user.id,
-          ...studentScope,
-          student.id,
-        ],
-      );
-
-      await pool.query(
-        `INSERT INTO evaluation_dispatches
-          (assignment_id, cycle_id, department_id, program_type, student_id, course_id,
-           course_code, course_name, academic_year, semester, year_level, student_group,
-           is_student_published, created_by, payload)
-         SELECT ca.id, ca.cycle_id, ca.department_id, ca.program_type, ?, ca.course_id,
-                c.code, c.name, ca.academic_year, ca.semester, ca.year_level, 'lab_assistant',
-                1, ?, JSON_OBJECT(
-                  'source', 'student_publish',
-                  'requires_lab', true,
-                  'lab_assistant_id', lae.lab_assistant_id,
-                  'course_id', ca.course_id,
-                  'section_id', ca.id
-                )
-         FROM course_assignments ca
-         INNER JOIN courses c ON c.id = ca.course_id
-         INNER JOIN lab_assignment_evaluations lae
-           ON lae.course_id = ca.course_id
-          AND lae.section_id = ca.id
-          AND CONVERT(lae.year_level USING utf8mb4) COLLATE utf8mb4_general_ci =
-              CONVERT(ca.year_level USING utf8mb4) COLLATE utf8mb4_general_ci
-          AND CONVERT(lae.semester USING utf8mb4) COLLATE utf8mb4_general_ci =
-              CONVERT(ca.semester USING utf8mb4) COLLATE utf8mb4_general_ci
-          AND lae.is_published = 1
-         INNER JOIN instructors lab_i ON lab_i.id = lae.lab_assistant_id
-         INNER JOIN users lab_u ON lab_u.id = lab_i.user_id
-         WHERE ca.department_id = ? AND ca.cycle_id = ?
-           AND ca.is_student_published = 1
-           AND LOWER(TRIM(ca.year_level)) = LOWER(TRIM(?))
-           AND LOWER(TRIM(ca.semester)) = LOWER(TRIM(?))
-           AND ${sectionPredicate}
-           AND (? = '' OR LOWER(TRIM(COALESCE(ca.program_type, ''))) = LOWER(TRIM(?)))
-           AND LOWER(COALESCE(lab_u.status, 'active')) = 'active'
-           AND LOWER(REPLACE(REPLACE(TRIM(COALESCE(lab_u.role, '')), '-', '_'), ' ', '_'))
-             IN ('lab_assistant', 'ara')
-           AND NOT EXISTS (
-             SELECT 1 FROM evaluation_dispatches existing
-             WHERE existing.student_id = ? AND existing.cycle_id = ca.cycle_id
-               AND existing.student_group = 'lab_assistant'
-               AND JSON_UNQUOTE(JSON_EXTRACT(existing.payload, '$.lab_assistant_id')) =
-                   CAST(lae.lab_assistant_id AS CHAR)
-           )`,
-        [
-          student.id,
-          req.user.id,
-          ...studentScope,
-          student.id,
-        ],
       );
 
       const [rows] = await pool.query(
         `SELECT ed.id,
-        ? AS deadline,
+        COALESCE(NULLIF(ec.end_at, ''), ?) AS deadline,
         ed.template_id,
         ed.student_id,
         CASE WHEN ed.student_group = 'lab_assistant'
@@ -9024,10 +8920,12 @@ app.get(
         ses.id AS submission_id,
         CASE WHEN ses.id IS NOT NULL THEN 1 ELSE 0 END AS is_evaluated
       FROM evaluation_dispatches ed
+      LEFT JOIN evaluation_cycles ec ON ec.id = ed.cycle_id
       LEFT JOIN courses c ON ed.course_id = c.id
       LEFT JOIN lab_classes lc ON lc.course_id = c.id
-      LEFT JOIN course_assignments ca ON (ca.id = ed.assignment_id OR (ca.student_id = ed.student_id AND ca.course_id = ed.course_id))
-        AND ca.cycle_id = ed.cycle_id
+      LEFT JOIN course_assignments ca ON ca.id = ed.assignment_id
+        AND ca.academic_year = ed.academic_year
+        AND ca.semester = ed.semester
       LEFT JOIN (
         SELECT
           student_id,
@@ -9041,7 +8939,7 @@ app.get(
           JSON_UNQUOTE(JSON_EXTRACT(payload, '$.lab_assistant_id'))
       ) lab_dispatch
         ON lab_dispatch.student_id = ed.student_id
-        AND lab_dispatch.cycle_id = ed.cycle_id
+        AND lab_dispatch.cycle_id <=> ed.cycle_id
         AND lab_dispatch.lab_assistant_id =
             JSON_UNQUOTE(JSON_EXTRACT(ed.payload, '$.lab_assistant_id'))
       LEFT JOIN instructors i ON ca.instructor_id = i.id
@@ -9061,13 +8959,8 @@ app.get(
       LEFT JOIN departments target_department ON target_department.id = target_i.department_id
       LEFT JOIN colleges target_college ON target_college.id = target_department.college_id
       LEFT JOIN student_evaluation_submissions ses ON ses.dispatch_id = ed.id
-      WHERE ed.student_id = ? AND ed.cycle_id = ? AND ed.is_student_published = 1
-        AND ca.department_id = ?
-        AND LOWER(TRIM(ca.year_level)) = LOWER(TRIM(?))
-        AND LOWER(TRIM(ca.semester)) = LOWER(TRIM(?))
-        AND LOWER(TRIM(REPLACE(REPLACE(ca.section, 'Section ', ''), 'section ', ''))) =
-            LOWER(TRIM(REPLACE(REPLACE(?, 'Section ', ''), 'section ', '')))
-        AND (? = '' OR LOWER(TRIM(COALESCE(ca.program_type, ''))) = LOWER(TRIM(?)))
+      WHERE ed.student_id = ? AND ed.is_student_published = 1
+        AND COALESCE(ed.department_id, ca.department_id) = ?
         AND (
           LOWER(TRIM(COALESCE(ed.student_group, ''))) <> 'lab_assistant'
           OR (
@@ -9086,13 +8979,7 @@ app.get(
         [
           evaluationDeadline,
           student.id,
-          activeCycle.id,
           studentDepartmentId,
-          student.year_level,
-          student.semester,
-          normalizedSection,
-          student.program_type || "",
-          student.program_type || "",
         ],
       );
 
@@ -9113,8 +9000,8 @@ app.get(
         success: true,
         data: {
           evaluations: normalized,
-          deadline: evaluationDeadline,
-          expiryDate: evaluationDeadline,
+          deadline: normalized[0]?.deadline || evaluationDeadline,
+          expiryDate: normalized[0]?.deadline || evaluationDeadline,
           isExpired: false,
         },
       });
@@ -9320,8 +9207,6 @@ app.post(
   authorizeRoles("student"),
   async (req, res) => {
     try {
-      const activeCycle = await getActiveEvaluationCycle();
-      if (!activeCycle) return sendResponse(res, 409, "There is no active evaluation cycle.");
       const {
         dispatch_id,
         score,
@@ -9394,8 +9279,8 @@ app.post(
 
       const student = studentRows[0];
       const [dispatchRows] = await pool.query(
-        "SELECT * FROM evaluation_dispatches WHERE id = ? AND student_id = ? AND cycle_id = ? LIMIT 1",
-        [dispatch_id, student.id, activeCycle.id],
+        "SELECT * FROM evaluation_dispatches WHERE id = ? AND student_id = ? AND is_student_published = 1 LIMIT 1",
+        [dispatch_id, student.id],
       );
       if (!dispatchRows.length) {
         return sendResponse(
@@ -9482,8 +9367,6 @@ app.post(
   authorizeRoles("student"),
   async (req, res) => {
     try {
-      const activeCycle = await getActiveEvaluationCycle();
-      if (!activeCycle) return sendResponse(res, 409, "There is no active evaluation cycle.");
       const {
         dispatch_id,
         score,
@@ -9571,8 +9454,8 @@ app.post(
 
       const student = studentRows[0];
       const [dispatchRows] = await pool.query(
-        "SELECT * FROM evaluation_dispatches WHERE id = ? AND student_id = ? AND cycle_id = ? LIMIT 1",
-        [dispatch_id, student.id, activeCycle.id],
+        "SELECT * FROM evaluation_dispatches WHERE id = ? AND student_id = ? AND is_student_published = 1 LIMIT 1",
+        [dispatch_id, student.id],
       );
       if (!dispatchRows.length) {
         return sendResponse(

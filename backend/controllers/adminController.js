@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { isValidPassword } = require("../utils/inputValidation");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const {
@@ -1480,14 +1481,16 @@ const resetUserPasswordDirectly = async (req, res) => {
       message: "A valid target user ID is required.",
     });
   }
-  if (
-    typeof newPassword !== "string" ||
-    newPassword.length < 8 ||
-    Buffer.byteLength(newPassword, "utf8") > 72
-  ) {
+  if (!isValidPassword(newPassword)) {
     return res.status(400).json({
       success: false,
-      message: "Password must be at least 8 characters and no more than 72 bytes.",
+      message: "Password must contain at least 8 characters.",
+    });
+  }
+  if (Buffer.byteLength(newPassword, "utf8") > 72) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must not exceed 72 UTF-8 bytes.",
     });
   }
 

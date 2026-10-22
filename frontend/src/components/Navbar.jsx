@@ -10,8 +10,10 @@ import { LanguageContext } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import mauLogo from '../assets/mau.jpg';
 import toast from 'react-hot-toast';
+import { useUiText } from '../hooks/useUiText';
 
 const Navbar = () => {
+  const t = useUiText();
   const { strings } = useContext(LanguageContext);
   const { user, role, isAuthenticated, logout } = useAuth();
   const location = useLocation();
@@ -28,7 +30,7 @@ const Navbar = () => {
     await logout();
     setDropdownOpen(false);
     setIsOpen(false);
-    toast.success('Logged out successfully');
+    toast.success(t('Logged out successfully'));
   };
 
   const navLinks = hidePublicNav ? [] : [
@@ -44,12 +46,16 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="flex min-w-0 items-center gap-2 md:gap-3 group">
-            <img src={mauLogo} alt="Mekdela Amba University logo" className="h-11 w-11 md:h-14 md:w-14 shrink-0 object-contain" />
+            <img src={mauLogo} alt={`Mekdela Amba University ${t('logo')}`} className="h-11 w-11 md:h-14 md:w-14 shrink-0 object-contain" />
             <div className="min-w-0 leading-tight">
               <span className="block truncate text-white font-bold text-sm sm:text-base md:text-lg tracking-wide">{strings.common.appName}</span>
               <span className="mt-0.5 block truncate text-white text-[11px] sm:text-xs md:text-sm">{strings.common.universityName}</span>
             </div>
           </Link>
+
+          <div className="ml-auto mr-1 md:hidden">
+            <LanguageSwitcher />
+          </div>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
@@ -135,7 +141,7 @@ const Navbar = () => {
           <button
             onClick={toggleMenu}
             type="button"
-            aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-label={isOpen ? t('Close navigation menu') : t('Open navigation menu')}
             aria-expanded={isOpen}
             className="ml-auto inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-2xl text-white transition-colors hover:bg-white/10 md:hidden"
           >
@@ -167,29 +173,29 @@ const Navbar = () => {
                 </div>
                 {role === 'student' && (
                   <Link to="/student-dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-4 py-3 text-white hover:text-white hover:bg-white/10 rounded-lg">
-                    <FaUserGraduate /> Dashboard
+                    <FaUserGraduate /> {strings.common.dashboard}
                   </Link>
                 )}
                 {role === 'instructor' && (
                   <Link to="/instructor-dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-4 py-3 text-white hover:text-white hover:bg-white/10 rounded-lg">
-                    <FaChalkboardTeacher /> Instructor Panel
+                    <FaChalkboardTeacher /> {strings.common.instructorPanel}
                   </Link>
                 )}
                 {(role === 'admin' || role === 'systemadmin') && (
                   <Link to="/system-admin-dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-4 py-3 text-white hover:text-white hover:bg-white/10 rounded-lg">
-                    <FaUserShield /> Admin Panel
+                    <FaUserShield /> {strings.common.adminPanel}
                   </Link>
                 )}
                 {role === 'depthead' && (
                   <Link to="/depthead-dashboard" onClick={() => setIsOpen(false)} className="flex items-center gap-3 px-4 py-3 text-white hover:text-white hover:bg-white/10 rounded-lg">
-                    <FaSitemap /> Dept. Head Panel
+                    <FaSitemap /> {strings.common.deptHeadPanel}
                   </Link>
                 )}
                 <button
                   onClick={() => { handleLogout(); setIsOpen(false); }}
                   className="flex items-center gap-3 px-4 py-3 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-lg w-full"
                 >
-                  <FaSignOutAlt /> Logout
+                  <FaSignOutAlt /> {strings.common.logout}
                 </button>
               </>
             ) : (

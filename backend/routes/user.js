@@ -6,6 +6,7 @@ const pool = require("../config/db");
 const { authenticateToken } = require("../middleware/auth");
 const { ensureUserProfileSettings } = require("../utils/profileSettings");
 const { isValidPhoneNumber } = require("../utils/phone");
+const { validateRequestInput } = require("../utils/inputValidation");
 const {
   createUserSession,
   ensureUserNotificationPreferences,
@@ -85,6 +86,7 @@ router.put(
   "/profile",
   authenticateToken,
   upload.single("photo"),
+  validateRequestInput,
   async (req, res) => {
     let connection;
     try {
@@ -107,6 +109,12 @@ router.put(
         return res
           .status(401)
           .json({ success: false, message: "Authenticated user is required." });
+      if (fullName !== undefined && !fullName) {
+        return res.status(400).json({
+          success: false,
+          message: "Full name cannot be empty.",
+        });
+      }
       const isAdmin = ["admin", "systemadmin", "super_admin"].includes(
         String(req.user?.role || "").trim().toLowerCase(),
       );

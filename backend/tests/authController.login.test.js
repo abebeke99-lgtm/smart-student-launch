@@ -67,7 +67,7 @@ test("rejects non-admin logins while system maintenance is active", async () => 
 
   await login(
     {
-      body: { username: "student.one", password: "valid-password" },
+      body: { username: "mau12345", password: "valid-password" },
       headers: {},
       session: {},
     },
@@ -109,7 +109,7 @@ test("allows System Admin login while system maintenance is active", async () =>
 
   await login(
     {
-      body: { username: "system.admin", password: "valid-password" },
+      body: { username: "mau12345", password: "valid-password" },
       headers: {},
       session: {},
     },
@@ -211,4 +211,37 @@ test("does not authenticate an old email when it no longer matches the primary e
 
   assert.equal(responseStatus, 401);
   assert.equal(responseBody.message, "Incorrect username");
+});
+
+test("rejects usernames outside the mau-number or valid-email formats without trimming", async () => {
+  let queryCount = 0;
+  pool.query = async () => {
+    queryCount += 1;
+    return [[]];
+  };
+  const response = {
+    statusCode: null,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    },
+  };
+
+  await login(
+    {
+      body: { username: " mau1600548 ", password: "password" },
+      headers: {},
+      session: {},
+    },
+    response,
+  );
+
+  assert.equal(response.statusCode, 400);
+  assert.match(response.body.message, /mau followed by digits/);
+  assert.equal(queryCount, 0);
 });

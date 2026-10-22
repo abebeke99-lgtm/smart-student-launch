@@ -1,14 +1,14 @@
-import { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, Users, Building2, TrendingUp } from 'lucide-react';
-import { LanguageContext } from '../context/LanguageContext';
 import { publicApi } from '../services/api';
+import { useUiText } from '../hooks/useUiText';
 
 import ImageSlider from '../components/ImageSlider';
 import UniversityFocusArea from '../components/UniversityFocusArea';
 import MAUKeyFigures from '../components/MAUKeyFigures';
 
 const Home = () => {
-  const { language } = useContext(LanguageContext);
+  const t = useUiText();
   const [systemStats, setSystemStats] = useState(null);
 
   useEffect(() => {
@@ -33,28 +33,28 @@ const Home = () => {
   const stats = [
     {
       id: 1,
-      label: language === 'en' ? 'Active Evaluators' : 'ንቁ ግምገማ ሰጪዎች',
+      label: t('Active Evaluators'),
       value: systemStats?.activeStudentEvaluators,
       icon: Users,
       color: 'blue',
     },
     {
       id: 2,
-      label: language === 'en' ? 'Evaluated Instructors' : 'የተገመገሙ አስተምህራን',
+      label: t('Evaluated Instructors'),
       value: systemStats?.evaluatedInstructors,
       icon: BarChart3,
       color: 'gold',
     },
     {
       id: 3,
-      label: language === 'en' ? 'Departments' : 'ክፍሎች',
+      label: t('Departments'),
       value: systemStats?.participatingDepartments,
       icon: Building2,
       color: 'blue',
     },
     {
       id: 4,
-      label: language === 'en' ? 'Completed Reports' : 'ተጠናቀቁ ሪፖርቶች',
+      label: t('Completed Reports'),
       value: systemStats?.completedEvaluations,
       icon: TrendingUp,
       color: 'gold',
@@ -72,12 +72,10 @@ const Home = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-blue-900 mb-2">
-              {language === 'en' ? 'IEPS Quick Overview' : 'የIEPS ፈጣን አጠቃላይ እይታ'}
+              {t('IEPS Quick Overview')}
             </h2>
             <p className="text-gray-600 italic">
-              {language === 'en'
-                ? 'Key metrics showing platform engagement and evaluation scope'
-                : 'ፕላትፎርም ተሳትፎ እና የግምገማ ክልል ያሳዩ ቁልፍ መለኪያዎች'}
+              {t('Key metrics showing platform engagement and evaluation scope')}
             </p>
           </div>
 
@@ -101,7 +99,7 @@ const Home = () => {
                     <Icon className="w-6 h-6 opacity-80" />
                   </div>
                   <p className="text-3xl md:text-4xl font-bold" aria-live="polite">
-                    {stat.value === undefined ? <span className="inline-block h-10 w-24 animate-pulse rounded bg-white/30" aria-label="Loading" /> : stat.value}
+                    {stat.value === undefined ? <span className="inline-block h-10 w-24 animate-pulse rounded bg-white/30" aria-label={t('Loading')} /> : stat.value}
                   </p>
                 </div>
               );

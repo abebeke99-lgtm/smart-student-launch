@@ -403,8 +403,6 @@ router.get(
   authorizeRoles("dept_head", "admin"),
   async (req, res) => {
     try {
-      const activeCycle = await getActiveEvaluationCycle();
-      if (!activeCycle) return res.status(200).json([]);
       const departmentValue =
         String(req.user?.role || "").toLowerCase() === "dept_head"
           ? req.user.department_id || req.user.department
@@ -429,8 +427,8 @@ router.get(
       }
 
       const [rows] = await pool.query(
-        `SELECT ca.id, ca.course_id, ca.instructor_id, ca.program_type, ca.year_level, 
-                ca.semester, ca.section,
+        `SELECT ca.id, ca.course_id, ca.instructor_id, ca.program_type, ca.year_level,
+          ca.semester, ca.section, ca.academic_year, ca.cycle_id,
                 ca.is_student_published,
                 ca.is_peer_published,
                 c.code AS course_code, c.name AS course_name,
@@ -438,9 +436,9 @@ router.get(
          FROM course_assignments ca
          INNER JOIN courses c ON c.id = ca.course_id
          INNER JOIN instructors i ON i.id = ca.instructor_id
-         WHERE ca.department_id = ? AND ca.cycle_id = ?
+         WHERE ca.department_id = ?
          ORDER BY ca.created_at DESC`,
-        [departmentId, activeCycle.id],
+        [departmentId],
       );
 
       return res.status(200).json(rows || []);
@@ -462,10 +460,6 @@ router.post(
   authorizeRoles("dept_head", "admin"),
   async (req, res) => {
     try {
-      const activeCycle = await getActiveEvaluationCycle();
-      if (!activeCycle) {
-        return res.status(409).json({ success: false, message: "There is no active evaluation cycle." });
-      }
       const {
         department_id,
         program_type,
@@ -493,11 +487,12 @@ router.post(
           .json({ success: false, message: "Department was not found." });
       }
 
-      const academicYear = String(academic_year || new Date().getFullYear());
-      if (academicYear !== String(activeCycle.academic_year)) {
-        return res.status(409).json({
+      const academicYear = String(academic_year || "").trim();
+      const selectedSemester = String(semester || "").trim();
+      if (!academicYear || !selectedSemester) {
+        return res.status(400).json({
           success: false,
-          message: `The active evaluation cycle is ${activeCycle.academic_year} ${activeCycle.semester}.`,
+          message: "Academic year and semester are required to publish evaluations.",
         });
       }
 
@@ -506,18 +501,18 @@ router.post(
         const labAssistantId = Number(lab_assistant_id);
         const sectionValue = normalizeSectionValue(section);
         const [[assignment]] = await pool.query(
-          `SELECT ca.id, ca.department_id, ca.course_id, ca.program_type, ca.year_level,
+            `SELECT ca.id, ca.cycle_id, ca.department_id, ca.course_id, ca.program_type, ca.year_level,
                   ca.semester, ca.section, ca.academic_year, c.code AS course_code, c.name
            FROM course_assignments ca
            INNER JOIN courses c ON c.id = ca.course_id
-           WHERE ca.course_id = ? AND ca.cycle_id = ?
+             WHERE ca.course_id = ? AND ca.department_id = ? AND ca.academic_year = ?
              AND LOWER(TRIM(REPLACE(REPLACE(ca.section, 'Section ', ''), 'section ', ''))) =
                  LOWER(TRIM(?))
              AND LOWER(TRIM(ca.year_level)) = LOWER(TRIM(?))
              AND LOWER(TRIM(ca.semester)) = LOWER(TRIM(?))
              AND (? = '' OR LOWER(TRIM(COALESCE(ca.program_type, ''))) = LOWER(TRIM(?)))
            LIMIT 1`,
-          [courseId, activeCycle.id, sectionValue, year_level, semester, program_type || "", program_type || ""],
+          [courseId, departmentId, academicYear, sectionValue, year_level, selectedSemester, program_type || "", program_type || ""],
         );
         if (!assignment) {
           return res.status(404).json({ success: false, message: "Course section assignment was not found." });
@@ -569,8 +564,8 @@ router.post(
         for (const student of students) {
           const [lectureDispatch] = await pool.query(
             `SELECT id FROM evaluation_dispatches
-             WHERE student_id = ? AND assignment_id = ? AND student_group = 'student' AND cycle_id = ? LIMIT 1`,
-            [student.id, assignment.id, activeCycle.id],
+             WHERE student_id = ? AND assignment_id = ? AND student_group = 'student' AND cycle_id <=> ? LIMIT 1`,
+            [student.id, assignment.id, assignment.cycle_id],
           );
           if (!lectureDispatch.length) {
             await pool.query(
@@ -579,7 +574,7 @@ router.post(
                  course_code, course_name, academic_year, semester, year_level, student_group,
                  is_student_published, created_by, payload)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 1, ?, ?)`,
-              [assignment.id, activeCycle.id, assignment.department_id, assignment.program_type || null, student.id,
+              [assignment.id, assignment.cycle_id, assignment.department_id, assignment.program_type || null, student.id,
                 assignment.course_id, assignment.course_code, assignment.name, assignment.academic_year,
                 assignment.semester, assignment.year_level, req.user.id,
                 JSON.stringify({ source: "student_publish", course_id: assignment.course_id, section_id: assignment.id })],
@@ -587,8 +582,8 @@ router.post(
           }
           const [existing] = await pool.query(
             `SELECT id FROM evaluation_dispatches
-             WHERE student_id = ? AND assignment_id = ? AND student_group = 'lab_assistant' AND cycle_id = ? LIMIT 1`,
-            [student.id, assignment.id, activeCycle.id],
+             WHERE student_id = ? AND assignment_id = ? AND student_group = 'lab_assistant' AND cycle_id <=> ? LIMIT 1`,
+            [student.id, assignment.id, assignment.cycle_id],
           );
           if (existing.length) {
             await pool.query(
@@ -606,7 +601,7 @@ router.post(
                 (assignment_id, cycle_id, department_id, program_type, student_id, course_id, course_code,
                  course_name, academic_year, semester, year_level, student_group, is_student_published, created_by, payload)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lab_assistant', 1, ?, ?)`,
-              [assignment.id, activeCycle.id, assignment.department_id, assignment.program_type || null, student.id,
+              [assignment.id, assignment.cycle_id, assignment.department_id, assignment.program_type || null, student.id,
                 assignment.course_id, assignment.course_code, assignment.name, assignment.academic_year,
                 assignment.semester, assignment.year_level, req.user.id, payload],
             );
@@ -616,11 +611,10 @@ router.post(
       }
       const duplicateFilters = [
         "ca.department_id = ?",
-        "ca.cycle_id = ?",
         "ca.academic_year = ?",
         "ca.is_student_published = 1",
       ];
-      const duplicateParams = [departmentId, activeCycle.id, academicYear];
+      const duplicateParams = [departmentId, academicYear];
 
       [
         ["ca.program_type", program_type],
@@ -660,8 +654,8 @@ router.post(
         });
       }
 
-      const filters = ["ca.department_id = ?", "ca.cycle_id = ?", "ca.academic_year = ?"];
-      const params = [departmentId, activeCycle.id, academicYear];
+      const filters = ["ca.department_id = ?", "ca.academic_year = ?"];
+      const params = [departmentId, academicYear];
       [
         ["ca.program_type", program_type],
         ["ca.year_level", year_level],
@@ -675,7 +669,7 @@ router.post(
       });
 
       const [assignments] = await pool.query(
-        `SELECT ca.id, ca.course_id, ca.instructor_id, ca.academic_year, ca.program_type,
+        `SELECT ca.id, ca.cycle_id, ca.course_id, ca.instructor_id, ca.academic_year, ca.program_type,
               ca.year_level, ca.semester, ca.section, c.code AS course_code, c.name,
              (lc.course_id IS NOT NULL) AS is_lab
        FROM course_assignments ca
@@ -745,7 +739,7 @@ router.post(
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', ?, 1, ?, ?)`,
             [
               assignment.id,
-              activeCycle.id,
+              assignment.cycle_id,
               student.id,
               assignment.course_id,
               assignment.course_code || null,

@@ -1,10 +1,12 @@
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { FaChalkboardTeacher, FaSearch } from 'react-icons/fa';
 import { LanguageContext } from '../../context/LanguageContext';
+import { useUiText } from '../../hooks/useUiText';
 
 const pageSize = 8;
 
 const InstructorsSection = ({ users, departments = [] }) => {
+  const t = useUiText();
   const { strings } = useContext(LanguageContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
@@ -61,9 +63,9 @@ const InstructorsSection = ({ users, departments = [] }) => {
 
       <div className="mb-4 grid gap-3 md:grid-cols-2">
         <label className="text-sm text-gray-600">
-          <span className="mb-1 block font-medium">Department</span>
+          <span className="mb-1 block font-medium">{t('Department')}</span>
           <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm">
-            <option value="All">All departments</option>
+            <option value="All">{t('All departments')}</option>
             {departments.map((department) => <option key={department.id} value={String(department.id)}>{department.name}</option>)}
           </select>
         </label>
@@ -76,7 +78,7 @@ const InstructorsSection = ({ users, departments = [] }) => {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by Username, Email, or Phone Number"
+              placeholder={t('Search by Username, Email, or Phone Number')}
               className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm"
             />
           </div>
@@ -88,7 +90,7 @@ const InstructorsSection = ({ users, departments = [] }) => {
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-gray-100 text-gray-500">
-              <th className="py-2">Phone Number</th>
+              <th className="py-2">{t('Phone Number')}</th>
               <th className="py-2">{strings.common.name}</th>
             </tr>
           </thead>

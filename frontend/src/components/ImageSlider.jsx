@@ -1,12 +1,14 @@
 import { useState, useEffect, useContext } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
+import { useUiText } from '../hooks/useUiText';
 import graduation from '../assets/graduation.jpg';
 import campus from '../assets/campus.jpg';
 import classroom from '../assets/classroom.jpg';
 import dashboard from '../assets/dashboard.jpg';
 
 const ImageSlider = () => {
+  const t = useUiText();
   const { language } = useContext(LanguageContext);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
@@ -82,7 +84,7 @@ const ImageSlider = () => {
         >
           <img
             src={slide.image}
-            alt={slide.alt}
+            alt={t(slide.alt)}
             className="absolute inset-0 z-0 h-full w-full object-cover object-center"
           />
           <div className="absolute inset-0 z-10 bg-black/20" />
@@ -95,7 +97,7 @@ const ImageSlider = () => {
             fadeOut ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
           }`}
         >
-          {language === 'en' ? slides[currentSlide].titleEn : slides[currentSlide].titleAm}
+          {language === 'en' ? t(slides[currentSlide].titleEn) : slides[currentSlide].titleAm}
         </h2>
       </div>
 
@@ -116,7 +118,7 @@ const ImageSlider = () => {
             className={`rounded-full transition-all duration-300 ${
               i === currentSlide ? 'bg-ieps-gold-500 w-8 h-3' : 'bg-white/60 w-3 h-3 hover:bg-white'
             }`}
-            aria-label={`Go to slide ${i + 1}`}
+            aria-label={`${t('Go to slide')} ${i + 1}`}
           />
         ))}
       </div>
@@ -125,7 +127,7 @@ const ImageSlider = () => {
         type="button"
         onClick={handlePrevious}
         className="absolute left-4 top-1/2 z-30 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/25 text-white shadow-lg opacity-0 transition-opacity duration-300 group-hover:opacity-100 hover:bg-black/40"
-        aria-label="Previous slide"
+        aria-label={t('Previous slide')}
       >
         <ChevronLeft size={24} />
       </button>
@@ -134,7 +136,7 @@ const ImageSlider = () => {
         type="button"
         onClick={handleNext}
         className="absolute right-4 top-1/2 z-30 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-black/25 text-white shadow-lg opacity-0 transition-opacity duration-300 group-hover:opacity-100 hover:bg-black/40"
-        aria-label="Next slide"
+        aria-label={t('Next slide')}
       >
         <ChevronRight size={24} />
       </button>

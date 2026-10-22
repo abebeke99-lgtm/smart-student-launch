@@ -7,6 +7,7 @@ import { ThemeContext } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { resolveApiAssetUrl } from '../../config';
 import { userApi } from '../services/api';
+import { useUiText } from '../hooks/useUiText';
 
 const notificationOptions = [
   {
@@ -42,6 +43,7 @@ const readStoredUser = () => {
 };
 
 const SettingsPage = () => {
+  const uiText = useUiText();
   const { strings } = useContext(LanguageContext);
   const { isDark, toggleTheme } = useContext(ThemeContext);
   const { user, setAuthSession } = useAuth();
@@ -234,15 +236,15 @@ const SettingsPage = () => {
       toast.success(t.sessionSignedOut);
     } catch (error) {
       console.error('Session sign-out failed:', error);
-      toast.error(error.message || 'Unable to sign out the selected session.');
+      toast.error(error.message || uiText('Unable to sign out the selected session.'));
     } finally {
       setRevokingSession('');
     }
   };
 
-  const email = profile.email || profile.username || 'Not available';
-  const department = profile.department_name || profile.departmentName || profile.department || 'Not assigned';
-  const college = profile.college_name || profile.collegeName || profile.college || 'Not assigned';
+  const email = profile.email || profile.username || uiText('Not available');
+  const department = profile.department_name || profile.departmentName || profile.department || uiText('Not assigned');
+  const college = profile.college_name || profile.collegeName || profile.college || uiText('Not assigned');
   const avatarUrl = resolveApiAssetUrl(photoPreview);
   const currentSessionTracked = sessions.some((session) => session.isCurrent);
 
@@ -264,7 +266,7 @@ const SettingsPage = () => {
           <form onSubmit={saveProfile}>
             <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center">
               {avatarUrl ? (
-                <img src={avatarUrl} alt={`${fullName || 'Account'} profile`} className="h-20 w-20 rounded-full border border-slate-200 object-cover" />
+                <img src={avatarUrl} alt={`${fullName || uiText('Account')} ${uiText('profile photo')}`} className="h-20 w-20 rounded-full border border-slate-200 object-cover" />
               ) : (
                 <div aria-hidden="true" className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-2xl font-semibold text-blue-800">
                   {(fullName || profile.username || 'U').trim().charAt(0).toUpperCase()}
@@ -273,7 +275,7 @@ const SettingsPage = () => {
               <div>
                 <label className="inline-flex cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
                   {t.uploadPicture}
-                  <input type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} aria-label="Upload profile picture" />
+                  <input type="file" accept="image/*" className="sr-only" onChange={handlePhotoChange} aria-label={uiText('Upload profile picture')} />
                 </label>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t.imageLimit}</p>
               </div>
@@ -283,7 +285,7 @@ const SettingsPage = () => {
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 {t.fullName}
                 <input value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required={isAdmin} maxLength={255} readOnly={!isAdmin} disabled={profileLoading} className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-slate-100 read-only:cursor-not-allowed read-only:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:disabled:bg-slate-700 dark:read-only:bg-slate-700" />
-                {!isAdmin && <span className="mt-1 block text-xs font-normal text-slate-500 dark:text-slate-400">Only an administrator can change account names or login details.</span>}
+                {!isAdmin && <span className="mt-1 block text-xs font-normal text-slate-500 dark:text-slate-400">{uiText('Only an administrator can change account names or login details.')}</span>}
               </label>
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 {t.institutionalEmail}

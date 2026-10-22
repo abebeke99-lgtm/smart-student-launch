@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useUiText } from '../hooks/useUiText';
 
 const dashboardRoutes = {
   dept_head: '/dept-head-dashboard',
@@ -16,6 +17,7 @@ const dashboardRoutes = {
 };
 
 const BackButton = () => {
+  const t = useUiText();
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const storedUser = useMemo(() => {
@@ -39,7 +41,7 @@ const BackButton = () => {
       className="mb-4 flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-600 transition-colors hover:text-blue-600"
     >
       <ArrowLeft size={16} aria-hidden="true" />
-      <span>Back to Dashboard</span>
+      <span>{t('Back to Dashboard')}</span>
     </button>
   );
 };

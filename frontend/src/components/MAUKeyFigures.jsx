@@ -2,6 +2,7 @@ import { useEffect, useState, useContext, useRef } from 'react';
 import { Users, CheckCircle, BookOpen, FileText, BarChart3, Zap, Award, Clock } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
 import { publicApi } from '../services/api';
+import { useUiText } from '../hooks/useUiText';
 
 const AnimatedCounter = ({ target, duration = 2000 }) => {
   const [count, setCount] = useState(0);
@@ -45,6 +46,7 @@ const AnimatedCounter = ({ target, duration = 2000 }) => {
 };
 
 const MAUKeyFigures = () => {
+  const t = useUiText();
   const { language } = useContext(LanguageContext);
   const [systemStats, setSystemStats] = useState(null);
 
@@ -149,11 +151,11 @@ const MAUKeyFigures = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-blue-900 mb-4">
-            {language === 'en' ? 'IEPS SYSTEM METRICS' : 'IEPS ስርዓት መለኪያዎች'}
+            {language === 'en' ? t('IEPS SYSTEM METRICS') : 'IEPS ስርዓት መለኪያዎች'}
           </h2>
           <p className="text-gray-700 text-lg">
             {language === 'en' 
-              ? 'Real-time instructor evaluation platform statistics and system operational metrics' 
+              ? t('Real-time instructor evaluation platform statistics and system operational metrics')
               : 'በእውነተኛ ጊዜ አስተምህር ግምገማ ፕላትፎርም ስታቲስቲክስ እና ስርዓት አሰራር መለኪያዎች'}
           </p>
         </div>
@@ -175,7 +177,7 @@ const MAUKeyFigures = () => {
 
                 <h3 className="text-3xl md:text-4xl font-bold text-blue-900 mb-1">
                   {figure.value === undefined ? (
-                    <span className="inline-block h-10 w-12 animate-pulse rounded bg-blue-300" aria-label="Loading" />
+                    <span className="inline-block h-10 w-12 animate-pulse rounded bg-blue-300" aria-label={t('Loading')} />
                   ) : (
                     <>
                       <AnimatedCounter target={figure.value} duration={2500} />
@@ -185,11 +187,11 @@ const MAUKeyFigures = () => {
                 </h3>
 
                 <p className="text-blue-900 font-semibold text-sm md:text-base mb-2">
-                  {language === 'en' ? figure.labelEn : figure.labelAm}
+                  {language === 'en' ? t(figure.labelEn) : figure.labelAm}
                 </p>
 
                 <p className="text-gray-600 text-xs md:text-sm">
-                  {language === 'en' ? figure.descriptionEn : figure.descriptionAm}
+                  {language === 'en' ? t(figure.descriptionEn) : figure.descriptionAm}
                 </p>
               </div>
             );

@@ -52,6 +52,36 @@ import DashboardBanner from '../components/DashboardBanner';
 import BroadcastManager from '../components/BroadcastManager';
 import { DashboardSidebarContext } from '../context/DashboardSidebarContext';
 import { useConfirmation } from '../components/ConfirmationDialog';
+import { useUiText } from '../hooks/useUiText';
+import { isValidUniversityUsername } from '../utils/inputValidation';
+
+const NAME_PATTERN = /^[\p{L} ]+$/u;
+const PHONE_PATTERN = /^(09|07)\d{8}$/;
+const PHONE_ERROR = 'Phone number must contain only numbers and be exactly 10 digits starting with 09 or 07.';
+
+const validateRegistrationField = (field, value) => {
+  const rawValue = String(value ?? '');
+  const normalized = field === 'username' ? rawValue : rawValue.trim();
+  if (['firstName', 'lastName'].includes(field)) {
+    if (!normalized) return 'This field is required.';
+    if (normalized.length < 3 || !NAME_PATTERN.test(normalized)) {
+      return 'Name must contain only letters and be at least 3 characters.';
+    }
+  } else if (field === 'username') {
+    if (!normalized) return 'This field is required.';
+    if (!isValidUniversityUsername(normalized)) {
+      return "Username must start with 'mau' followed by numbers (e.g., mau1600548).";
+    }
+  } else if (field === 'phoneNumber') {
+    if (!normalized) return 'This field is required.';
+    if (!PHONE_PATTERN.test(normalized)) {
+      return PHONE_ERROR;
+    }
+  } else if (!normalized) {
+    return 'This field is required.';
+  }
+  return '';
+};
 
 const fetchAuditTimelineEntries = async () => {
   const rows = await adminApi.getAuditLogs();
@@ -203,6 +233,7 @@ const SystemAdminDashboard = () => {
   const navigate = useNavigate();
   const sys = strings.systemAdminDashboard;
   const common = strings.common;
+  const ui = useUiText();
 
   const t = (key, fallbackEn, fallbackAm) => {
     const value = strings.systemAdminDashboard?.[key];
@@ -282,9 +313,9 @@ const SystemAdminDashboard = () => {
       const nextState = !systemActive;
       const response = await adminApi.setSystemMaintenance(nextState);
       setSystemActive(Boolean(response?.systemActive ?? nextState));
-      toast.success(nextState ? 'System access enabled.' : 'System access disabled for maintenance.');
+      toast.success(nextState ? ui('System access enabled.') : ui('System access disabled for maintenance.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to update system access.');
+      toast.error(error?.message || ui('Unable to update system access.'));
     }
   };
 
@@ -295,9 +326,9 @@ const SystemAdminDashboard = () => {
       const savedContact = await adminApi.updateContactInfo(contactInfo);
       setContactInfo(savedContact);
       window.dispatchEvent(new CustomEvent('ipes-contact-info-updated', { detail: savedContact }));
-      toast.success('Contact information updated.');
+      toast.success(ui('Contact information updated.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to update contact information.');
+      toast.error(error?.message || ui('Unable to update contact information.'));
     } finally {
       setContactInfoSaving(false);
     }
@@ -370,13 +401,43 @@ const SystemAdminDashboard = () => {
     year: '1st Year (Freshman)',
     section: 'A',
   }));
+  const [registrationErrors, setRegistrationErrors] = useState({});
+
+  const getRegistrationErrors = (form, mode) => {
+    const requiredFields = mode === 'student'
+      ? ['firstName', 'lastName', 'gender', 'username', 'phoneNumber', 'department', 'programType', 'year', 'semester', 'section']
+      : ['firstName', 'lastName', 'gender', 'username', 'phoneNumber', 'department'];
+    return Object.fromEntries(
+      requiredFields
+        .map((field) => [field, validateRegistrationField(field, form[field])])
+        .filter(([, message]) => message),
+    );
+  };
+
+  const updateRegistrationField = (setForm, field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+    if (field === 'phoneNumber' || Object.hasOwn(registrationErrors, field)) {
+      setRegistrationErrors((current) => ({
+        ...current,
+        [field]: validateRegistrationField(field, value),
+      }));
+    }
+  };
+
+  const registrationInputClass = (field) => `mt-2 w-full rounded-lg border ${
+    registrationErrors[field] ? 'border-red-500 bg-red-50' : 'border-slate-300 bg-white'
+  } p-3 text-slate-900 outline-none focus:border-blue-500`;
+
+  const renderRegistrationError = (field) => registrationErrors[field] && (
+    <span className="mt-1 block text-sm text-red-600" role="alert">{ui(registrationErrors[field])}</span>
+  );
 
   const handleCollegeRegistrationSubmit = async (event) => {
     event.preventDefault();
     const name = collegeNameInput.trim();
     const code = collegeCodeInput.trim();
     if (!name || !code) {
-      toast.error('Please enter the college name and college code.');
+      toast.error(ui('Please enter the college name and college code.'));
       return;
     }
 
@@ -385,9 +446,9 @@ const SystemAdminDashboard = () => {
       setCollegeReloadKey((current) => current + 1);
       setCollegeNameInput('');
       setCollegeCodeInput('');
-      toast.success('College registered successfully.');
+      toast.success(ui('College registered successfully.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to register college.');
+      toast.error(error?.message || ui('Unable to register college.'));
     }
   };
 
@@ -421,7 +482,7 @@ const SystemAdminDashboard = () => {
     setContactInfoLoading(true);
     adminApi.getContactInfo()
       .then((settings) => { if (isMounted) setContactInfo(settings); })
-      .catch((error) => { if (isMounted) toast.error(error?.message || 'Unable to load contact information.'); })
+      .catch((error) => { if (isMounted) toast.error(error?.message || ui('Unable to load contact information.')); })
       .finally(() => { if (isMounted) setContactInfoLoading(false); });
     return () => { isMounted = false; };
   }, [activeTab]);
@@ -568,7 +629,7 @@ const SystemAdminDashboard = () => {
         setCollegeLastUpdated(new Date());
       } catch (error) {
         if (isMounted) {
-          toast.error(error?.message || 'Unable to load registered colleges.');
+          toast.error(error?.message || ui('Unable to load registered colleges.'));
         }
       } finally {
         if (isMounted) setIsCollegesLoading(false);
@@ -612,7 +673,7 @@ const SystemAdminDashboard = () => {
 
   useEffect(() => {
     if (activeTab !== 'criteria') return;
-    criteriaApi.getAll(criteriaType).then(setCriteriaRows).catch((error) => toast.error(error.message || 'Unable to load criteria.'));
+    criteriaApi.getAll(criteriaType).then(setCriteriaRows).catch((error) => toast.error(error.message || ui('Unable to load criteria.')));
   }, [activeTab, criteriaType]);
 
   const resetCriterionForm = () => {
@@ -640,9 +701,9 @@ const SystemAdminDashboard = () => {
       }
       resetCriterionForm();
       setCriteriaRows(await criteriaApi.getAll(criteriaType));
-      toast.success(editingCriterionId ? 'Criterion updated successfully.' : 'Criterion added successfully.');
+      toast.success(editingCriterionId ? ui('Criterion updated successfully.') : ui('Criterion added successfully.'));
     } catch (error) {
-      toast.error(error.message || 'Unable to save criterion.');
+      toast.error(error.message || ui('Unable to save criterion.'));
     }
   };
 
@@ -652,9 +713,9 @@ const SystemAdminDashboard = () => {
       if (nextActive) await criteriaApi.update(criterion.id, { is_active: true });
       else await criteriaApi.remove(criterion.id);
       setCriteriaRows((current) => current.map((row) => row.id === criterion.id ? { ...row, is_active: nextActive ? 1 : 0 } : row));
-      toast.success(nextActive ? 'Criterion enabled.' : 'Criterion disabled.');
+      toast.success(nextActive ? ui('Criterion enabled.') : ui('Criterion disabled.'));
     } catch (error) {
-      toast.error(error.message || 'Unable to disable criterion.');
+      toast.error(error.message || ui('Unable to disable criterion.'));
     }
   };
 
@@ -713,7 +774,7 @@ const SystemAdminDashboard = () => {
 
   const handleSaveEdit = async (updatedHead) => {
     if (!updatedHead || !updatedHead.id) {
-      toast.error('Invalid user selected.');
+      toast.error(ui('Invalid user selected.'));
       return;
     }
 
@@ -721,7 +782,7 @@ const SystemAdminDashboard = () => {
     const existingDepartmentHead = deptHeads.find((head) => head.department === departmentValue && head.id !== updatedHead.id && head.status !== 'Inactive' && head.status !== 'Reassigned');
 
     if (updatedHead.role === 'dept_head' && existingDepartmentHead && !headEditTransferMode) {
-      toast.error('Department Head already exists for this department. Please update or reassign the existing Department Head.');
+      toast.error(ui('Department Head already exists for this department. Please update or reassign the existing Department Head.'));
       return;
     }
 
@@ -754,16 +815,16 @@ const SystemAdminDashboard = () => {
       setShowEditModal(false);
       setSelectedHead(null);
       setHeadEditTransferMode(false);
-      toast.success('User updated successfully.');
+      toast.success(ui('User updated successfully.'));
     } catch (error) {
       console.error('Update user failed:', error);
-      toast.error(error?.message || 'Unable to save user changes.');
+      toast.error(error?.message || ui('Unable to save user changes.'));
     }
   };
 
   const handleResetPassword = async (user) => {
     if (!user?.id) {
-      toast.error('Invalid user selected.');
+      toast.error(ui('Invalid user selected.'));
       return;
     }
     if (!await requestConfirmation({
@@ -777,9 +838,9 @@ const SystemAdminDashboard = () => {
     try {
       const result = await adminApi.resetUserPassword(user.id);
       const defaultPassword = result?.defaultPassword || result?.data?.defaultPassword || '12345678';
-      toast.success(`Password successfully reset to default: ${defaultPassword}`);
+      toast.success(`${ui('Password successfully reset to default:')} ${defaultPassword}`);
     } catch (error) {
-      toast.error(error?.message || "Unable to reset this user's password.");
+      toast.error(error?.message || ui("Unable to reset this user's password."));
     } finally {
       setResettingPasswordUserId(null);
     }
@@ -790,7 +851,7 @@ const SystemAdminDashboard = () => {
       setUploadFile(null);
       setUploadFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
-      toast.error('Please choose a CSV file.');
+      toast.error(ui('Please choose a CSV file.'));
       return;
     }
     setUploadFile(file);
@@ -809,7 +870,7 @@ const SystemAdminDashboard = () => {
 
   const downloadRegisteredData = async () => {
     if (!registrationMode || isExportingRegisteredData) {
-      if (!registrationMode) toast.error('Select a registration type before downloading registered data.');
+      if (!registrationMode) toast.error(ui('Select a registration type before downloading registered data.'));
       return;
     }
     setIsExportingRegisteredData(true);
@@ -823,9 +884,9 @@ const SystemAdminDashboard = () => {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
-      toast.success('Registered data downloaded.');
+      toast.success(ui('Registered data downloaded.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to download registered data.');
+      toast.error(error?.message || ui('Unable to download registered data.'));
     } finally {
       setIsExportingRegisteredData(false);
     }
@@ -833,7 +894,7 @@ const SystemAdminDashboard = () => {
 
   const handleInstructorChange = (field) => (event) => {
     const value = event.target.value;
-    setInstructorForm((current) => ({ ...current, [field]: value }));
+    updateRegistrationField(setInstructorForm, field, value);
     if (field === 'role' && value !== 'dept_head') {
       setDeptHeadTransferMode(false);
     }
@@ -841,16 +902,18 @@ const SystemAdminDashboard = () => {
 
   const handleStudentChange = (field) => (event) => {
     const value = event.target.value;
+    if (field !== 'college') {
+      updateRegistrationField(setStudentForm, field, value);
+      return;
+    }
     setStudentForm((current) => {
-      if (field === 'college') {
-        const nextDepartment = getDepartmentsForCollege(value)[0]?.id || current.department;
-        return { ...current, college: value, department: nextDepartment };
-      }
-      return { ...current, [field]: value };
+      const nextDepartment = getDepartmentsForCollege(value)[0]?.id || current.department;
+      return { ...current, college: value, department: nextDepartment };
     });
   };
 
   const resetInstructorForm = () => {
+    setRegistrationErrors({});
     setInstructorForm({
       firstName: '',
       lastName: '',
@@ -863,6 +926,7 @@ const SystemAdminDashboard = () => {
   };
 
   const resetStudentForm = () => {
+    setRegistrationErrors({});
     setStudentForm({
       firstName: '',
       lastName: '',
@@ -879,12 +943,12 @@ const SystemAdminDashboard = () => {
 
   const handleBulkUploadSubmit = async () => {
     if (!uploadFile) {
-      toast.error('Please choose a CSV file before uploading.');
+      toast.error(ui('Please choose a CSV file before uploading.'));
       return;
     }
 
     if (!registrationMode) {
-      toast.error('Please select a registration type before uploading.');
+      toast.error(ui('Please select a registration type before uploading.'));
       return;
     }
 
@@ -989,12 +1053,18 @@ const SystemAdminDashboard = () => {
 
   const handleUserRegistrationSubmit = async (event) => {
     event.preventDefault();
-    setIsSubmitting(true);
 
     const parseDepartmentId = (value) => {
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : null;
     };
+
+    const currentForm = registrationMode === 'student' ? studentForm : instructorForm;
+    const errors = getRegistrationErrors(currentForm, registrationMode);
+    setRegistrationErrors(errors);
+    if (Object.keys(errors).length) return;
+
+    setIsSubmitting(true);
 
     try {
       if (registrationMode === 'instructor' || registrationMode === 'lab_assistant') {
@@ -1002,16 +1072,10 @@ const SystemAdminDashboard = () => {
         const fullName = [instructorForm.firstName, instructorForm.lastName].filter(Boolean).join(' ').trim();
         const roleValue = registrationMode === 'lab_assistant' ? 'lab_assistant' : 'instructor';
 
-        if (!username || !fullName || !/^09\d{8}$/.test(instructorForm.phoneNumber.trim()) || !instructorForm.department) {
-          toast.error('Please complete the instructor form before registering.');
-          setIsSubmitting(false);
-          return;
-        }
-
         if (roleValue === 'dept_head') {
           const existingDepartmentHead = deptHeads.find((head) => head.department === instructorForm.department && head.status !== 'Inactive' && head.status !== 'Reassigned');
           if (existingDepartmentHead && !deptHeadTransferMode) {
-            toast.error('Department Head already exists for this department.');
+            toast.error(ui('Department Head already exists for this department.'));
             setIsSubmitting(false);
             return;
           }
@@ -1061,7 +1125,7 @@ const SystemAdminDashboard = () => {
             ...current,
             { id: Date.now(), user: 'SystemAdmin', action: 'Department Head registered', time: new Date().toLocaleString(), desc: `Registered ${fullName}`, ip: '127.0.0.1', browser: navigator.userAgent },
           ]);
-          toast.success('Department Head registered successfully.');
+          toast.success(ui('Department Head registered successfully.'));
         } else {
           setInstructors((current) => [{
             id: Date.now(),
@@ -1076,7 +1140,7 @@ const SystemAdminDashboard = () => {
             ...current,
             { id: Date.now(), user: 'SystemAdmin', action: 'Instructor registered', time: new Date().toLocaleString(), desc: `Registered ${fullName}`, ip: '127.0.0.1', browser: navigator.userAgent },
           ]);
-          toast.success('Instructor registered successfully.');
+          toast.success(ui('Instructor registered successfully.'));
         }
 
         resetInstructorForm();
@@ -1087,12 +1151,6 @@ const SystemAdminDashboard = () => {
 
       const username = studentForm.username.trim();
       const fullName = [studentForm.firstName, studentForm.lastName].filter(Boolean).join(' ').trim();
-
-      if (!username || !fullName || !/^09\d{8}$/.test(studentForm.phoneNumber.trim()) || !studentForm.department || !studentForm.section || !studentForm.year) {
-        toast.error('Please complete the student form before registering.');
-        setIsSubmitting(false);
-        return;
-      }
 
       const payload = {
         first_name: studentForm.firstName.trim(),
@@ -1130,7 +1188,7 @@ const SystemAdminDashboard = () => {
         ...current,
         { id: Date.now(), user: 'SystemAdmin', action: 'Student registered', time: new Date().toLocaleString(), desc: `Registered ${fullName}`, ip: '127.0.0.1', browser: navigator.userAgent },
       ]);
-      toast.success('Student registered successfully.');
+      toast.success(ui('Student registered successfully.'));
       resetStudentForm();
       setIsSubmitting(false);
     } catch (error) {
@@ -1148,7 +1206,7 @@ const SystemAdminDashboard = () => {
       setApiTokenVisible(true);
       toast.success(strings.systemAdminDashboard.successTokenRotated);
     } catch (error) {
-      toast.error(error?.message || 'Unable to rotate API token.');
+      toast.error(error?.message || ui('Unable to rotate API token.'));
     } finally {
       setApiTokenLoading(false);
     }
@@ -1226,7 +1284,7 @@ const SystemAdminDashboard = () => {
       setViewDataStaff(activeAccounts.filter((user) => staffRoles.includes(user.role)));
       setStudents(activeAccounts.filter((user) => user.role === 'student'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to refresh registered users.');
+      toast.error(error?.message || ui('Unable to refresh registered users.'));
     }
   };
 
@@ -1298,26 +1356,26 @@ const SystemAdminDashboard = () => {
         }
       `}</style>
 
-      {isSidebarOpen && <button type="button" aria-label="Close sidebar" className="admin-sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && <button type="button" aria-label={ui('Close sidebar')} className="admin-sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className="admin-dashboard-shell">
         <aside className={`admin-sidebar flex h-full flex-shrink-0 flex-col print:hidden ${isSidebarOpen ? 'is-open' : ''}`}>
-          <nav className="space-y-1.5 px-2" aria-label="System administration navigation">
+          <nav className="space-y-1.5 px-2" aria-label={ui('System administration navigation')}>
           {[
             { id: 'overview', icon: LayoutDashboard, label: t('overview', 'Overview', 'አጠቃላይ') },
             { id: 'department-course', icon: ClipboardList, label: t('collegeDepartmentRegistration', 'College and Department Registration', 'ኮሌጅ እና ዲፓርትመንት ምዝገባ') },
-            { id: 'criteria', icon: ClipboardList, label: 'Evaluation Criteria' },
+            { id: 'criteria', icon: ClipboardList, label: ui('Evaluation Criteria') },
             { id: 'register-head', icon: UserPlus, label: t('registerHead', 'Register User', 'ምዝገባ') },
-            { id: 'manage-roles', icon: ShieldCheck, label: 'Manage Roles' },
+            { id: 'manage-roles', icon: ShieldCheck, label: ui('Manage Roles') },
             { id: 'view-data', icon: Database, label: t('viewData', 'View Data', 'ውሂብ ይመልከቱ') },
             { id: 'broadcast', icon: Megaphone, label: t('broadcastManager', 'Broadcast Manager', 'የስርጭት አስተዳደር') },
-            { id: 'contact-info', icon: MapPin, label: 'Contact Us Details' },
+            { id: 'contact-info', icon: MapPin, label: ui('Contact Us Details') },
             { id: 'security', icon: ShieldCheck, label: t('securityLogs', 'Security & Logs', 'ደህንነት እና መዝገቦች') },
             { id: 'health', icon: Activity, label: t('systemHealth', 'System Health', 'የስርዓት ጤና') },
           ].map((item) => {
             const Icon = item.icon;
             const departmentLabel = item.id === 'department-course' && item.label.endsWith(' Registration')
-              ? <>{item.label.slice(0, -' Registration'.length)}<br />Registration</>
+              ? <>{item.label.slice(0, -' Registration'.length)}<br />{ui('Registration')}</>
               : item.label;
             return (
               <button
@@ -1342,7 +1400,7 @@ const SystemAdminDashboard = () => {
               <path d="M7 69h166M17 74h146" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity=".65" />
               <path d="M22 66V53l-5 5m5-5 5 5m131 8V52l-5 5m5-5 5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity=".75" />
             </svg>
-            <p className="text-[11px] font-medium italic leading-4">Better Teaching,<br />Better Learning,<br />Brighter Future</p>
+            <p className="text-[11px] font-medium italic leading-4">{ui('Better Teaching, Better Learning, Brighter Future')}</p>
           </div>
         </aside>
 
@@ -1409,13 +1467,13 @@ const SystemAdminDashboard = () => {
                   <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-700"><Users size={18} aria-hidden="true" /></span>
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-900">Registered Users</h2>
-                      <p className="mt-1 text-sm text-slate-500">Active accounts by role, from the IPES database.</p>
+                      <h2 className="text-lg font-semibold text-slate-900">{ui('Registered Users')}</h2>
+                      <p className="mt-1 text-sm text-slate-500">{ui('Active accounts by role, from the IPES database.')}</p>
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tabular-nums text-slate-700">{dashboardStatsLoading ? '...' : dashboardStats?.registeredUsers ?? '—'} total</span>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold tabular-nums text-slate-700">{dashboardStatsLoading ? '...' : dashboardStats?.registeredUsers ?? '—'} {ui('total')}</span>
                 </div>
-                <div className="space-y-3.5" role="img" aria-label="Active registered users by role">
+                <div className="space-y-3.5" role="img" aria-label={ui('Active registered users by role')}>
                   {roleDistribution.map((roleItem) => {
                     const RoleIcon = roleItem.icon;
                     const barWidth = Math.max(roleItem.count ? 5 : 0, ((roleItem.count || 0) / (largestRoleCount * 1.25)) * 100);
@@ -1423,7 +1481,7 @@ const SystemAdminDashboard = () => {
                       <div key={roleItem.key} className="grid grid-cols-[minmax(125px,175px)_1fr_2.5rem] items-center gap-3">
                         <span className="flex min-w-0 items-center gap-2">
                           <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${roleItem.iconColor}`}><RoleIcon size={14} aria-hidden="true" /></span>
-                          <span className="truncate text-xs font-medium text-slate-700 sm:text-sm">{roleItem.label}</span>
+                          <span className="truncate text-xs font-medium text-slate-700 sm:text-sm">{ui(roleItem.label)}</span>
                         </span>
                         <span className="h-2 overflow-hidden rounded-full bg-slate-100"><span className={`block h-full rounded-full transition-[width] duration-500 ${roleItem.barColor}`} style={{ width: `${Math.min(100, barWidth)}%` }} /></span>
                         <span className="text-right text-sm font-semibold tabular-nums text-slate-800">{dashboardStatsLoading ? '...' : roleItem.count ?? '—'}</span>
@@ -1436,8 +1494,8 @@ const SystemAdminDashboard = () => {
               <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Security Overview</h2>
-                    <p className="mt-1 text-sm text-slate-500">Current database-backed posture.</p>
+                    <h2 className="text-lg font-semibold text-slate-900">{ui('Security Overview')}</h2>
+                    <p className="mt-1 text-sm text-slate-500">{ui('Current database-backed posture.')}</p>
                   </div>
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-emerald-700"><ShieldCheck size={18} aria-hidden="true" /></span>
                 </div>
@@ -1449,17 +1507,17 @@ const SystemAdminDashboard = () => {
                 <dl className="mt-5 grid grid-cols-2 gap-3">
                   <div className="flex min-h-16 items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700"><LockKeyhole size={17} aria-hidden="true" /></span>
-                    <div><dt className="text-xs text-slate-500">Open signals</dt><dd className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{dashboardStatsLoading ? '...' : dashboardStats?.securityPulse ?? '—'}</dd></div>
+                    <div><dt className="text-xs text-slate-500">{ui('Open signals')}</dt><dd className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{dashboardStatsLoading ? '...' : dashboardStats?.securityPulse ?? '—'}</dd></div>
                   </div>
                   <div className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 ${databaseOnline ? 'border-emerald-100 bg-emerald-50/70' : 'border-rose-100 bg-rose-50/70'}`}>
                     <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white ${databaseOnline ? 'text-emerald-700' : 'text-rose-700'}`}><Database size={17} aria-hidden="true" /></span>
-                    <div><dt className="text-xs text-slate-500">Database</dt><dd className={`mt-0.5 text-sm font-semibold ${databaseOnline ? 'text-emerald-800' : 'text-rose-800'}`}>{dbHealthMetrics.status === '--' ? 'Checking…' : dbHealthMetrics.status}</dd></div>
+                    <div><dt className="text-xs text-slate-500">{ui('Database')}</dt><dd className={`mt-0.5 text-sm font-semibold ${databaseOnline ? 'text-emerald-800' : 'text-rose-800'}`}>{dbHealthMetrics.status === '--' ? ui('Checking…') : dbHealthMetrics.status}</dd></div>
                   </div>
                 </dl>
                 <div className="mt-4 flex min-h-16 items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
                   <span className="flex min-w-0 items-center gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Clock3 size={17} aria-hidden="true" /></span>
-                    <span className="min-w-0"><span className="block text-sm font-medium text-slate-800">Last activity</span><span className="block truncate text-xs text-slate-500">{lastActivity?.action || 'No recent activity recorded'}</span></span>
+                    <span className="min-w-0"><span className="block text-sm font-medium text-slate-800">{ui('Last activity')}</span><span className="block truncate text-xs text-slate-500">{lastActivity?.action || ui('No recent activity recorded')}</span></span>
                   </span>
                   <span className="shrink-0 text-right text-[11px] text-slate-500">{lastActivity?.time || '—'}</span>
                 </div>
@@ -1473,23 +1531,23 @@ const SystemAdminDashboard = () => {
           <section className="space-y-6">
             <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div><h3 className="text-2xl font-bold text-slate-900">Evaluation Criteria</h3><p className="mt-1 text-slate-600">Manage the questions used by each evaluation form.</p></div>
-                <button type="button" onClick={() => { setEditingCriterionId(null); setCriteriaForm({ criterion_text: '', criterion_text_am: '', category: 'General', weight: 5 }); setShowCriterionForm(true); }} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><Plus size={16} /> Add New Criterion</button>
+                <div><h3 className="text-2xl font-bold text-slate-900">{ui('Evaluation Criteria')}</h3><p className="mt-1 text-slate-600">{ui('Manage the questions used by each evaluation form.')}</p></div>
+                <button type="button" onClick={() => { setEditingCriterionId(null); setCriteriaForm({ criterion_text: '', criterion_text_am: '', category: 'General', weight: 5 }); setShowCriterionForm(true); }} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"><Plus size={16} /> {ui('Add New Criterion')}</button>
               </div>
                 <div className="mt-6 grid gap-3 rounded-2xl bg-slate-100 p-3 md:grid-cols-2">
-                  <label className="text-sm font-semibold text-slate-700">Target Role<select value={criteriaTargetRole} onChange={(event) => { const nextRole = event.target.value; setCriteriaTargetRole(nextRole); setCriteriaType(nextRole === 'lab_assistant' ? 'ara_student' : 'student'); resetCriterionForm(); }} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-normal"><option value="instructor">Instructor</option><option value="lab_assistant">Lab Assistant (ARA)</option></select></label>
-                  <label className="text-sm font-semibold text-slate-700">Evaluator Type<select value={criteriaType} onChange={(event) => { setCriteriaType(event.target.value); resetCriterionForm(); }} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-normal">{evaluatorOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+                  <label className="text-sm font-semibold text-slate-700">{ui('Target Role')}<select value={criteriaTargetRole} onChange={(event) => { const nextRole = event.target.value; setCriteriaTargetRole(nextRole); setCriteriaType(nextRole === 'lab_assistant' ? 'ara_student' : 'student'); resetCriterionForm(); }} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-normal"><option value="instructor">{ui('Instructor')}</option><option value="lab_assistant">{ui('Lab Assistant (ARA)')}</option></select></label>
+                  <label className="text-sm font-semibold text-slate-700">{ui('Evaluator Type')}<select value={criteriaType} onChange={(event) => { setCriteriaType(event.target.value); resetCriterionForm(); }} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-normal">{evaluatorOptions.map(([value, label]) => <option key={value} value={value}>{ui(label)}</option>)}</select></label>
               </div>
               {showCriterionForm || editingCriterionId ? (
                 <form onSubmit={saveCriterion} className="fixed inset-0 z-50 m-auto grid h-fit w-[min(92vw,760px)] gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-2xl md:grid-cols-[1fr_1fr_180px_100px_auto]">
-                  <input value={criteriaForm.criterion_text} onChange={(event) => setCriteriaForm({ ...criteriaForm, criterion_text: event.target.value })} placeholder="Criterion Text (English)" maxLength={255} required className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                  <input value={criteriaForm.criterion_text_am} onChange={(event) => setCriteriaForm({ ...criteriaForm, criterion_text_am: event.target.value })} placeholder="Criterion Text (Amharic)" maxLength={255} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                  <input value={criteriaForm.category} onChange={(event) => setCriteriaForm({ ...criteriaForm, category: event.target.value })} placeholder="Category" className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                  <input value={criteriaForm.criterion_text} onChange={(event) => setCriteriaForm({ ...criteriaForm, criterion_text: event.target.value })} placeholder={ui('Criterion Text (English)')} maxLength={255} required className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                  <input value={criteriaForm.criterion_text_am} onChange={(event) => setCriteriaForm({ ...criteriaForm, criterion_text_am: event.target.value })} placeholder={ui('Criterion Text (Amharic)')} maxLength={255} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
+                  <input value={criteriaForm.category} onChange={(event) => setCriteriaForm({ ...criteriaForm, category: event.target.value })} placeholder={ui('Category')} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
                   <input type="number" min="1" value={criteriaForm.weight} onChange={(event) => setCriteriaForm({ ...criteriaForm, weight: event.target.value })} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" />
-                  <div className="flex gap-2"><button type="submit" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">{editingCriterionId ? 'Save' : 'Add'}</button><button type="button" onClick={resetCriterionForm} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button></div>
+                  <div className="flex gap-2"><button type="submit" className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white">{editingCriterionId ? ui('Save') : ui('Add')}</button><button type="button" onClick={resetCriterionForm} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700">{ui('Cancel')}</button></div>
                 </form>
               ) : null}
-                  <div className="mt-6 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 text-slate-500"><tr><th className="px-3 py-3">Criterion</th><th className="px-3 py-3">Amharic</th><th className="px-3 py-3">Target Role</th><th className="px-3 py-3">Category</th><th className="px-3 py-3">Weight</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Actions</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredCriteriaRows.map((criterion) => <tr key={criterion.id} className={!criterion.is_active ? 'bg-slate-50 text-slate-400' : ''}><td className="px-3 py-3">{criterion.criterion_text}</td><td className="px-3 py-3">{criterion.criterion_text_am || '—'}</td><td className="px-3 py-3">{criterion.target_role === 'lab_assistant' ? 'Lab Assistant (ARA)' : 'Instructor'}</td><td className="px-3 py-3">{criterion.category}</td><td className="px-3 py-3">{criterion.weight}</td><td className="px-3 py-3">{criterion.is_active ? 'Active' : 'Disabled'}</td><td className="px-3 py-3"><div className="flex gap-3"><button type="button" onClick={() => { setEditingCriterionId(criterion.id); setCriteriaType(criterion.evaluator_type); setCriteriaTargetRole(['instructor', 'lab_assistant'].includes(criterion.target_role) ? criterion.target_role : criteriaTargetForType(criterion.evaluator_type)); setCriteriaForm({ criterion_text: criterion.criterion_text, criterion_text_am: criterion.criterion_text_am || '', category: criterion.category, weight: criterion.weight }); setShowCriterionForm(true); }} className="text-blue-600 hover:text-blue-800"><Pencil size={16} /></button><button type="button" onClick={() => toggleCriterion(criterion)} className={criterion.is_active ? 'text-red-600 hover:text-red-800' : 'text-emerald-600 hover:text-emerald-800'}><Trash2 size={16} /></button></div></td></tr>)}{!filteredCriteriaRows.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-500">No criteria for this target role and evaluator type.</td></tr>}</tbody></table></div>
+                  <div className="mt-6 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b border-slate-200 text-slate-500"><tr><th className="px-3 py-3">{ui('Criterion')}</th><th className="px-3 py-3">{ui('Amharic')}</th><th className="px-3 py-3">{ui('Target Role')}</th><th className="px-3 py-3">{ui('Category')}</th><th className="px-3 py-3">{ui('Weight')}</th><th className="px-3 py-3">{ui('Status')}</th><th className="px-3 py-3">{ui('Actions')}</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredCriteriaRows.map((criterion) => <tr key={criterion.id} className={!criterion.is_active ? 'bg-slate-50 text-slate-400' : ''}><td className="px-3 py-3">{criterion.criterion_text}</td><td className="px-3 py-3">{criterion.criterion_text_am || '—'}</td><td className="px-3 py-3">{ui(criterion.target_role === 'lab_assistant' ? 'Lab Assistant (ARA)' : 'Instructor')}</td><td className="px-3 py-3">{criterion.category}</td><td className="px-3 py-3">{criterion.weight}</td><td className="px-3 py-3">{ui(criterion.is_active ? 'Active' : 'Disabled')}</td><td className="px-3 py-3"><div className="flex gap-3"><button type="button" onClick={() => { setEditingCriterionId(criterion.id); setCriteriaType(criterion.evaluator_type); setCriteriaTargetRole(['instructor', 'lab_assistant'].includes(criterion.target_role) ? criterion.target_role : criteriaTargetForType(criterion.evaluator_type)); setCriteriaForm({ criterion_text: criterion.criterion_text, criterion_text_am: criterion.criterion_text_am || '', category: criterion.category, weight: criterion.weight }); setShowCriterionForm(true); }} className="text-blue-600 hover:text-blue-800"><Pencil size={16} /></button><button type="button" onClick={() => toggleCriterion(criterion)} className={criterion.is_active ? 'text-red-600 hover:text-red-800' : 'text-emerald-600 hover:text-emerald-800'}><Trash2 size={16} /></button></div></td></tr>)}{!filteredCriteriaRows.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-500">{ui('No criteria for this target role and evaluator type.')}</td></tr>}</tbody></table></div>
             </div>
           </section>
         )}
@@ -1500,13 +1558,13 @@ const SystemAdminDashboard = () => {
               <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-center">
                 <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-blue-700">
                   <Building2 size={17} aria-hidden="true" />
-                  ACADEMIC STRUCTURE
+                  {ui('ACADEMIC STRUCTURE')}
                 </div>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">College and Department Registration</h1>
-                <p className="mt-1 max-w-xl text-sm leading-5 text-slate-600">Create colleges and departments from one place and keep their records updated instantly.</p>
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{ui('College and Department Registration')}</h1>
+                <p className="mt-1 max-w-xl text-sm leading-5 text-slate-600">{ui('Create colleges and departments from one place and keep their records updated instantly.')}</p>
               </div>
               <div className="relative hidden w-[42%] max-w-[420px] items-center justify-end gap-3 pr-3 md:flex">
-                <svg className="h-28 w-full max-w-[280px]" viewBox="0 0 320 130" role="img" aria-label="Illustration of an academic building">
+                <svg className="h-28 w-full max-w-[280px]" viewBox="0 0 320 130" role="img" aria-label={ui('Illustration of an academic building')}>
                   <defs>
                     <linearGradient id="college-building-fill" x1="0" x2="0" y1="0" y2="1">
                       <stop offset="0" stopColor="#ffffff" />
@@ -1525,7 +1583,7 @@ const SystemAdminDashboard = () => {
                   <circle cx="250" cy="76" r="14" fill="#78c99b" /><circle cx="266" cy="82" r="12" fill="#62b985" />
                   <path d="M274 42c8-13 20-13 27-1-7 12-19 15-27 1Z" fill="#a5d9fb" />
                 </svg>
-                <p className="max-w-24 text-right font-serif text-sm italic leading-5 text-blue-800">Building<br />Academic<br />Excellence</p>
+                <p className="max-w-24 text-right font-serif text-sm italic leading-5 text-blue-800">{ui('Building')}<br />{ui('Academic')}<br />{ui('Excellence')}</p>
               </div>
             </header>
 
@@ -1543,7 +1601,7 @@ const SystemAdminDashboard = () => {
                       aria-pressed={departmentCourseTab === id}
                       className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${departmentCourseTab === id ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
                     >
-                      <Icon size={16} aria-hidden="true" />{label}
+                      <Icon size={16} aria-hidden="true" />{ui(label)}
                     </button>
                   ))}
                 </div>
@@ -1552,34 +1610,34 @@ const SystemAdminDashboard = () => {
                   <form onSubmit={handleCollegeRegistrationSubmit}>
                     <div className="mb-6 flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Building2 size={20} aria-hidden="true" /></span>
-                      <div><h2 className="font-bold text-slate-900">College Information</h2><p className="text-xs text-slate-500">Enter the details of the college you want to register.</p></div>
+                      <div><h2 className="font-bold text-slate-900">{ui('College Information')}</h2><p className="text-xs text-slate-500">{ui('Enter the details of the college you want to register.')}</p></div>
                     </div>
                     <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
                       <label className="block text-sm font-semibold text-slate-700">
-                        College Name <span className="text-rose-500">*</span>
+                        {ui('College Name')} <span className="text-rose-500">*</span>
                         <span className="relative mt-2 block">
                           <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} aria-hidden="true" />
-                          <input value={collegeNameInput} onChange={(event) => setCollegeNameInput(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-base font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="College Name" required />
+                          <input value={collegeNameInput} onChange={(event) => setCollegeNameInput(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-base font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder={ui('College Name')} required />
                         </span>
                       </label>
                       <label className="block text-sm font-semibold text-slate-700">
-                        College Code <span className="text-rose-500">*</span>
+                        {ui('College Code')} <span className="text-rose-500">*</span>
                         <span className="relative mt-2 block">
                           <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} aria-hidden="true" />
-                          <input value={collegeCodeInput} onChange={(event) => setCollegeCodeInput(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-base font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="College Code" required />
+                          <input value={collegeCodeInput} onChange={(event) => setCollegeCodeInput(event.target.value)} className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-base font-normal text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder={ui('College Code')} required />
                         </span>
                       </label>
                     </div>
                     <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 pt-5">
-                      <button type="button" onClick={resetCollegeForm} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><RotateCcw size={16} aria-hidden="true" />Reset</button>
-                      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Plus size={18} aria-hidden="true" />Register College</button>
+                      <button type="button" onClick={resetCollegeForm} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><RotateCcw size={16} aria-hidden="true" />{ui('Reset')}</button>
+                      <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"><Plus size={18} aria-hidden="true" />{ui('Register College')}</button>
                     </div>
                   </form>
                 ) : (
                   <div>
                     <div className="mb-5 flex items-center gap-3">
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Network size={20} aria-hidden="true" /></span>
-                      <div><h2 className="font-bold text-slate-900">Department Information</h2><p className="text-xs text-slate-500">Connect a department with one of your registered colleges.</p></div>
+                      <div><h2 className="font-bold text-slate-900">{ui('Department Information')}</h2><p className="text-xs text-slate-500">{ui('Connect a department with one of your registered colleges.')}</p></div>
                     </div>
                     <DepartmentRegistration reloadKey={collegeReloadKey} onRegistered={(record) => {
                       setRegisteredDepartments((current) => [record, ...current]);
@@ -1591,7 +1649,7 @@ const SystemAdminDashboard = () => {
               <aside aria-labelledby="college-quick-info" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 <div className="mb-4 flex items-center gap-2.5">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-white"><Building2 size={18} aria-hidden="true" /></span>
-                  <h2 id="college-quick-info" className="font-bold text-slate-900">Quick Information</h2>
+                  <h2 id="college-quick-info" className="font-bold text-slate-900">{ui('Quick Information')}</h2>
                 </div>
                 <div className="space-y-2.5">
                   {[
@@ -1602,8 +1660,8 @@ const SystemAdminDashboard = () => {
                   ].map(({ label, value, note, icon: Icon, iconStyle }) => (
                     <div key={label} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
                       <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconStyle}`}><Icon size={17} aria-hidden="true" /></span>
-                      <div className="min-w-0"><p className="text-xs text-slate-500">{label}</p><p className="truncate text-sm font-bold text-slate-900">{value}</p><p className="truncate text-[11px] text-slate-500">{note}</p></div>
-                      {label === 'System Status' && databaseOnline && <CircleCheck size={16} className="ml-auto shrink-0 text-emerald-600" aria-label="Online" />}
+                      <div className="min-w-0"><p className="text-xs text-slate-500">{ui(label)}</p><p className="truncate text-sm font-bold text-slate-900">{['Checking…', 'Online', 'Offline'].includes(value) ? ui(value) : value}</p><p className="truncate text-[11px] text-slate-500">{ui(note)}</p></div>
+                      {label === 'System Status' && databaseOnline && <CircleCheck size={16} className="ml-auto shrink-0 text-emerald-600" aria-label={ui('Online')} />}
                     </div>
                   ))}
                 </div>
@@ -1658,7 +1716,10 @@ const SystemAdminDashboard = () => {
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setRegistrationMode(id)}
+                  onClick={() => {
+                    setRegistrationMode(id);
+                    setRegistrationErrors({});
+                  }}
                   aria-pressed={registrationMode === id}
                   className={`group flex min-h-24 items-center gap-3 rounded-2xl border-l-4 border-y border-r px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${accent} ${registrationMode === id ? 'ring-2 ring-blue-500/30' : ''}`}
                 >
@@ -1717,7 +1778,7 @@ const SystemAdminDashboard = () => {
                         aria-busy={isBulkSubmitting}
                       >
                         {isBulkSubmitting && <RefreshCw size={16} className="animate-spin" aria-hidden="true" />}
-                        {isBulkSubmitting ? 'Uploading...' : <><Upload size={16} aria-hidden="true" />Upload CSV</>}
+                        {isBulkSubmitting ? ui('Uploading...') : <><Upload size={16} aria-hidden="true" />{ui('Upload CSV')}</>}
                       </button>
                     </div>
 
@@ -1736,15 +1797,15 @@ const SystemAdminDashboard = () => {
                         accept=".csv,text/csv"
                         className="hidden"
                         onChange={handleFileInputChange}
-                        aria-label="Choose CSV file"
+                        aria-label={ui('Choose CSV file')}
                       />
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700">
                           <FileSpreadsheet className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-slate-800">Drag and drop a file here</p>
-                          <p className="mt-0.5 text-xs text-slate-500">CSV files only</p>
+                          <p className="text-sm font-semibold text-slate-800">{ui('Drag and drop a file here')}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{ui('CSV files only')}</p>
                           <p className="mt-1 max-w-full truncate text-xs text-blue-700" aria-live="polite">
                             {uploadFileName || sys.noFileSelected}
                           </p>
@@ -1756,7 +1817,7 @@ const SystemAdminDashboard = () => {
                           onClick={() => fileInputRef.current?.click()}
                           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
-                          Choose file
+                          {ui('Choose file')}
                         </button>
                         <button
                           type="button"
@@ -1765,7 +1826,7 @@ const SystemAdminDashboard = () => {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {isExportingRegisteredData ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Database className="h-4 w-4" aria-hidden="true" />}
-                          {isExportingRegisteredData ? 'Downloading...' : 'Download Registered Data (DB)'}
+                          {isExportingRegisteredData ? ui('Downloading...') : ui('Download Registered Data (DB)')}
                         </button>
                       </div>
                     </div>
@@ -1776,46 +1837,52 @@ const SystemAdminDashboard = () => {
                     <div className="md:col-span-2 lg:col-span-3">
                       <section className="mb-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
-                          <h4 className="text-lg font-semibold text-slate-900">👤 Personal Information</h4>
+                          <h4 className="text-lg font-semibold text-slate-900">👤 {ui('Personal Information')}</h4>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">First Name <span className="text-red-600">*</span></span>
-                            <input value={instructorForm.firstName} onChange={handleInstructorChange('firstName')} minLength={3} maxLength={30} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder={sys.firstNamePlaceholder} required />
+                            <span className="text-sm font-medium text-slate-700">{ui('First Name')} <span className="text-red-600">*</span></span>
+                            <input value={instructorForm.firstName} onChange={handleInstructorChange('firstName')} maxLength={30} aria-invalid={Boolean(registrationErrors.firstName)} className={registrationInputClass('firstName')} placeholder={sys.firstNamePlaceholder} required />
+                            {renderRegistrationError('firstName')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Last Name <span className="text-red-600">*</span></span>
-                            <input value={instructorForm.lastName} onChange={handleInstructorChange('lastName')} minLength={3} maxLength={30} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder={sys.lastNamePlaceholder} required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Last Name')} <span className="text-red-600">*</span></span>
+                            <input value={instructorForm.lastName} onChange={handleInstructorChange('lastName')} maxLength={30} aria-invalid={Boolean(registrationErrors.lastName)} className={registrationInputClass('lastName')} placeholder={sys.lastNamePlaceholder} required />
+                            {renderRegistrationError('lastName')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Gender <span className="text-red-600">*</span></span>
-                            <select value={instructorForm.gender} onChange={handleInstructorChange('gender')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>
-                              <option value="">Select Gender</option>
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
+                            <span className="text-sm font-medium text-slate-700">{ui('Gender')} <span className="text-red-600">*</span></span>
+                            <select value={instructorForm.gender} onChange={handleInstructorChange('gender')} aria-invalid={Boolean(registrationErrors.gender)} className={registrationInputClass('gender')} required>
+                              <option value="">{ui('Select Gender')}</option>
+                              <option value="male">{ui('Male')}</option>
+                              <option value="female">{ui('Female')}</option>
                             </select>
+                            {renderRegistrationError('gender')}
                           </label>
                         </div>
                       </section>
 
                       <section className="mb-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
-                          <h4 className="text-lg font-semibold text-slate-900">🎓 Academic &amp; Employment Information</h4>
+                          <h4 className="text-lg font-semibold text-slate-900">🎓 {ui('Academic & Employment Information')}</h4>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Department <span className="text-red-600">*</span></span>
-                            <select value={instructorForm.department} onChange={handleInstructorChange('department')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required disabled={isDepartmentsLoading}>
-                              {isDepartmentsLoading ? <option value="" disabled>Loading departments...</option> : <><option value="">Select Department</option>{groupedDepartmentOptions.map((group) => <optgroup key={group.id} label={group.name}>{group.departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</optgroup>)}</>}
+                            <span className="text-sm font-medium text-slate-700">{ui('Department')} <span className="text-red-600">*</span></span>
+                            <select value={instructorForm.department} onChange={handleInstructorChange('department')} aria-invalid={Boolean(registrationErrors.department)} className={registrationInputClass('department')} required disabled={isDepartmentsLoading}>
+                              {isDepartmentsLoading ? <option value="" disabled>{ui('Loading departments...')}</option> : <><option value="">{ui('Select Department')}</option>{groupedDepartmentOptions.map((group) => <optgroup key={group.id} label={group.name}>{group.departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</optgroup>)}</>}
                             </select>
+                            {renderRegistrationError('department')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Username / University ID <span className="text-red-600">*</span></span>
-                            <input value={instructorForm.username} onChange={handleInstructorChange('username')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder="Enter username or university ID" required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Username / University ID')} <span className="text-red-600">*</span></span>
+                            <input value={instructorForm.username} onChange={handleInstructorChange('username')} aria-invalid={Boolean(registrationErrors.username)} className={registrationInputClass('username')} placeholder={ui('Enter username or university ID')} required />
+                            {renderRegistrationError('username')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Phone Number <span className="text-red-600">*</span></span>
-                            <input type="tel" inputMode="numeric" pattern="09[0-9]{8}" minLength={10} maxLength={10} title="Phone number must start with 09 and contain exactly 10 digits." value={instructorForm.phoneNumber} onChange={handleInstructorChange('phoneNumber')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder="0919640887" required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Phone Number')} <span className="text-red-600">*</span></span>
+                            <input type="tel" inputMode="numeric" maxLength={10} aria-invalid={Boolean(registrationErrors.phoneNumber)} value={instructorForm.phoneNumber} onChange={handleInstructorChange('phoneNumber')} className={registrationInputClass('phoneNumber')} placeholder="0919640887" required />
+                            {renderRegistrationError('phoneNumber')}
                           </label>
                         </div>
                       </section>
@@ -1826,67 +1893,75 @@ const SystemAdminDashboard = () => {
                     <div className="md:col-span-2 lg:col-span-3">
                       <section className="mb-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
-                          <h4 className="text-lg font-semibold text-slate-900">👤 Personal Information</h4>
+                          <h4 className="text-lg font-semibold text-slate-900">👤 {ui('Personal Information')}</h4>
                         </div>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">First Name <span className="text-red-600">*</span></span>
-                            <input value={studentForm.firstName} onChange={handleStudentChange('firstName')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder={sys.firstNamePlaceholder} required />
+                            <span className="text-sm font-medium text-slate-700">{ui('First Name')} <span className="text-red-600">*</span></span>
+                            <input value={studentForm.firstName} onChange={handleStudentChange('firstName')} maxLength={30} aria-invalid={Boolean(registrationErrors.firstName)} className={registrationInputClass('firstName')} placeholder={sys.firstNamePlaceholder} required />
+                            {renderRegistrationError('firstName')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Last Name <span className="text-red-600">*</span></span>
-                            <input value={studentForm.lastName} onChange={handleStudentChange('lastName')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder={sys.lastNamePlaceholder} required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Last Name')} <span className="text-red-600">*</span></span>
+                            <input value={studentForm.lastName} onChange={handleStudentChange('lastName')} maxLength={30} aria-invalid={Boolean(registrationErrors.lastName)} className={registrationInputClass('lastName')} placeholder={sys.lastNamePlaceholder} required />
+                            {renderRegistrationError('lastName')}
                           </label>
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Gender <span className="text-red-600">*</span></span>
-                            <select value={studentForm.gender} onChange={handleStudentChange('gender')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>
-                              <option value="">Select Gender</option>
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
+                            <span className="text-sm font-medium text-slate-700">{ui('Gender')} <span className="text-red-600">*</span></span>
+                            <select value={studentForm.gender} onChange={handleStudentChange('gender')} aria-invalid={Boolean(registrationErrors.gender)} className={registrationInputClass('gender')} required>
+                              <option value="">{ui('Select Gender')}</option>
+                              <option value="male">{ui('Male')}</option>
+                              <option value="female">{ui('Female')}</option>
                             </select>
+                            {renderRegistrationError('gender')}
                           </label>
                           <label className="block md:col-span-3">
-                            <span className="text-sm font-medium text-slate-700">Username / University ID <span className="text-red-600">*</span></span>
-                            <input value={studentForm.username} onChange={handleStudentChange('username')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder="Enter username or university ID" required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Username / University ID')} <span className="text-red-600">*</span></span>
+                            <input value={studentForm.username} onChange={handleStudentChange('username')} aria-invalid={Boolean(registrationErrors.username)} className={registrationInputClass('username')} placeholder={ui('Enter username or university ID')} required />
+                            {renderRegistrationError('username')}
                           </label>
                           <label className="block md:col-span-3">
-                            <span className="text-sm font-medium text-slate-700">Phone Number <span className="text-red-600">*</span></span>
-                            <input type="tel" inputMode="numeric" pattern="09[0-9]{8}" minLength={10} maxLength={10} title="Phone number must start with 09 and contain exactly 10 digits." value={studentForm.phoneNumber} onChange={handleStudentChange('phoneNumber')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" placeholder="0919640887" required />
+                            <span className="text-sm font-medium text-slate-700">{ui('Phone Number')} <span className="text-red-600">*</span></span>
+                            <input type="tel" inputMode="numeric" maxLength={10} aria-invalid={Boolean(registrationErrors.phoneNumber)} value={studentForm.phoneNumber} onChange={handleStudentChange('phoneNumber')} className={registrationInputClass('phoneNumber')} placeholder="0919640887" required />
+                            {renderRegistrationError('phoneNumber')}
                           </label>
                         </div>
                       </section>
 
                       <section className="mb-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
                         <div className="mb-4 flex items-center gap-2 border-b border-gray-200 pb-3">
-                          <h4 className="text-lg font-semibold text-slate-900">🎓 Academic Information</h4>
+                          <h4 className="text-lg font-semibold text-slate-900">🎓 {ui('Academic Information')}</h4>
                         </div>
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <label className="block">
-                              <span className="text-sm font-medium text-slate-700">Program Type <span className="text-red-600">*</span></span>
+                              <span className="text-sm font-medium text-slate-700">{ui('Program Type')} <span className="text-red-600">*</span></span>
                               <select value={studentForm.programType} onChange={handleStudentChange('programType')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>
                                 {programOptions.map((opt) => <option key={opt.value} value={opt.value}>{language === 'en' ? opt.en : opt.am}</option>)}
                               </select>
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-slate-700">Department <span className="text-red-600">*</span></span>
-                              <select value={studentForm.department} onChange={handleStudentChange('department')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required disabled={isDepartmentsLoading}>
-                                {isDepartmentsLoading ? <option value="" disabled>Loading departments...</option> : <><option value="">Select Department</option>{groupedDepartmentOptions.map((group) => <optgroup key={group.id} label={group.name}>{group.departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</optgroup>)}</>}
+                              <span className="text-sm font-medium text-slate-700">{ui('Department')} <span className="text-red-600">*</span></span>
+                              <select value={studentForm.department} onChange={handleStudentChange('department')} aria-invalid={Boolean(registrationErrors.department)} className={registrationInputClass('department')} required disabled={isDepartmentsLoading}>
+                                {isDepartmentsLoading ? <option value="" disabled>{ui('Loading departments...')}</option> : <><option value="">{ui('Select Department')}</option>{groupedDepartmentOptions.map((group) => <optgroup key={group.id} label={group.name}>{group.departments.map((dept) => <option key={dept.id} value={dept.id}>{dept.name}</option>)}</optgroup>)}</>}
                               </select>
+                              {renderRegistrationError('department')}
                             </label>
                           </div>
                           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                             <label className="block">
-                              <span className="text-sm font-medium text-slate-700">Year <span className="text-red-600">*</span></span>
-                              <select value={studentForm.year} onChange={handleStudentChange('year')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>{studentYearOptions.map((yearOption) => <option key={yearOption} value={yearOption}>{yearOption}</option>)}</select>
+                              <span className="text-sm font-medium text-slate-700">{ui('Year')} <span className="text-red-600">*</span></span>
+                              <select value={studentForm.year} onChange={handleStudentChange('year')} aria-invalid={Boolean(registrationErrors.year)} className={registrationInputClass('year')} required><option value="">{ui('Select Year')}</option>{studentYearOptions.map((yearOption) => <option key={yearOption} value={yearOption}>{ui(yearOption)}</option>)}</select>
+                              {renderRegistrationError('year')}
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-slate-700">Semester <span className="text-red-600">*</span></span>
+                              <span className="text-sm font-medium text-slate-700">{ui('Semester')} <span className="text-red-600">*</span></span>
                               <select value={studentForm.semester} onChange={handleStudentChange('semester')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>{semesterOptions.map((opt) => <option key={opt.value} value={opt.value}>{opt.en}</option>)}</select>
                             </label>
                             <label className="block">
-                              <span className="text-sm font-medium text-slate-700">Section <span className="text-red-600">*</span></span>
-                              <select value={studentForm.section} onChange={handleStudentChange('section')} className="mt-2 w-full rounded-lg border border-slate-300 bg-white p-3 text-slate-900 outline-none focus:border-blue-500" required>{sectionOptions.map((sectionOption) => <option key={sectionOption} value={sectionOption}>{sectionOption}</option>)}</select>
+                              <span className="text-sm font-medium text-slate-700">{ui('Section')} <span className="text-red-600">*</span></span>
+                              <select value={studentForm.section} onChange={handleStudentChange('section')} aria-invalid={Boolean(registrationErrors.section)} className={registrationInputClass('section')} required><option value="">{ui('Select Section')}</option>{sectionOptions.map((sectionOption) => <option key={sectionOption} value={sectionOption}>{ui(sectionOption)}</option>)}</select>
+                              {renderRegistrationError('section')}
                             </label>
                           </div>
                         </div>
@@ -1896,7 +1971,7 @@ const SystemAdminDashboard = () => {
 
                   <div className="md:col-span-2 lg:col-span-3 pt-4">
                     <button type="submit" disabled={isSubmitting} className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white shadow hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto sm:px-8">
-                      {isSubmitting ? t('registering', 'Registering...', 'በማስመዝገብ ላይ...') : uploadFile ? t('bulkRegister', 'Bulk Register', 'ብዛት አስመዝግብ') : registrationMode === 'student' ? t('registerStudent', 'Register Student', 'ተማሪ አስመዝግብ') : registrationMode === 'lab_assistant' ? 'Register Lab Assistant' : t('registerInstructor', 'Register Instructor', 'አስተማሪ አስመዝግብ')}
+                      {isSubmitting ? t('registering', 'Registering...', 'በማስመዝገብ ላይ...') : uploadFile ? t('bulkRegister', 'Bulk Register', 'ብዛት አስመዝግብ') : registrationMode === 'student' ? t('registerStudent', 'Register Student', 'ተማሪ አስመዝግብ') : registrationMode === 'lab_assistant' ? ui('Register Lab Assistant') : t('registerInstructor', 'Register Instructor', 'አስተማሪ አስመዝግብ')}
                     </button>
                   </div>
 
@@ -1932,7 +2007,7 @@ const SystemAdminDashboard = () => {
                   browser: navigator.userAgent,
                 },
               ]);
-              toast.success('Event scheduled successfully.');
+              toast.success(ui('Event scheduled successfully.'));
             }}
           />
         )}
@@ -1949,11 +2024,11 @@ const SystemAdminDashboard = () => {
                 { label: 'System Security', value: `${securityScore}/100`, badge: '◆ Excellent', icon: ShieldCheck, iconStyle: 'bg-amber-100 text-amber-700', badgeStyle: 'bg-emerald-50 text-emerald-700' },
               ].map((metric) => (
                 <article key={metric.label} className="relative rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.25)]">
-                  <span className={`absolute right-4 top-4 rounded-full px-2.5 py-1 text-[10px] font-semibold ${metric.badgeStyle}`}>{metric.badge}</span>
+                  <span className={`absolute right-4 top-4 rounded-full px-2.5 py-1 text-[10px] font-semibold ${metric.badgeStyle}`}>{ui(metric.badge)}</span>
                   <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${metric.iconStyle}`}>
                     <metric.icon size={20} aria-hidden="true" />
                   </span>
-                  <p className="mt-4 text-sm font-medium text-slate-500">{metric.label}</p>
+                  <p className="mt-4 text-sm font-medium text-slate-500">{ui(metric.label)}</p>
                   <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums text-slate-900">{metric.value}</p>
                 </article>
               ))}
@@ -1963,13 +2038,13 @@ const SystemAdminDashboard = () => {
               <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.25)]">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-[22px] font-semibold text-slate-900">Security posture</h3>
-                    <p className="mt-1 text-sm text-slate-500">Live system risk score and protection status.</p>
+                    <h3 className="text-[22px] font-semibold text-slate-900">{ui('Security posture')}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{ui('Live system risk score and protection status.')}</p>
                   </div>
-                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Protected</span>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700">{ui('Protected')}</span>
                 </div>
                 <div className="mt-6 flex items-center gap-5">
-                  <div className="relative h-28 w-28 shrink-0" role="img" aria-label={`Security score ${securityScore} out of 100`}>
+                  <div className="relative h-28 w-28 shrink-0" role="img" aria-label={`${ui('Security score')} ${securityScore} ${ui('out of 100')}`}>
                     <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
                       <circle cx="50" cy="50" r="43" fill="none" stroke="#e2e8f0" strokeWidth="8" />
                       <circle cx="50" cy="50" r="43" fill="none" stroke="#10b981" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 43}`} strokeDashoffset={`${2 * Math.PI * 43 * (1 - securityScore / 100)}`} />
@@ -1983,7 +2058,7 @@ const SystemAdminDashboard = () => {
                     {['Firewall Active', 'Intrusion Detection', 'Data Encryption', 'Access Control'].map((item) => (
                       <li key={item} className="flex items-center gap-2">
                         <CheckCircle2 size={15} className="shrink-0 text-emerald-500" aria-hidden="true" />
-                        {item}
+                        {ui(item)}
                       </li>
                     ))}
                   </ul>
@@ -1992,29 +2067,29 @@ const SystemAdminDashboard = () => {
 
               <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.25)]">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">API token</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{ui('API token')}</span>
                   <button
                     type="button"
                     onClick={() => void resetApiToken()}
                     disabled={apiTokenLoading}
-                    aria-label="Refresh API token"
-                    title="Refresh API token"
+                    aria-label={ui('Refresh API token')}
+                    title={ui('Refresh API token')}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 disabled:opacity-50"
                   >
                     <RefreshCw size={15} aria-hidden="true" />
                   </button>
                 </div>
-                <p className="mt-3 text-sm text-slate-500">Use this token for secure system integrations.</p>
+                <p className="mt-3 text-sm text-slate-500">{ui('Use this token for secure system integrations.')}</p>
                 <div className="mt-5 flex min-w-0 items-center gap-2 rounded-xl border border-blue-950 bg-[#102d55] px-3 py-2.5 text-blue-50 shadow-inner">
                   <span className="min-w-0 flex-1 truncate font-mono text-xs tracking-wider" aria-live="polite">
-                    {apiTokenLoading ? 'Loading...' : apiToken ? (apiTokenVisible ? apiToken : `${apiToken.slice(0, 6)}${'*'.repeat(Math.max(4, apiToken.length - 10))}${apiToken.slice(-4)}`) : 'Not configured'}
+                    {apiTokenLoading ? ui('Loading...') : apiToken ? (apiTokenVisible ? apiToken : `${apiToken.slice(0, 6)}${'*'.repeat(Math.max(4, apiToken.length - 10))}${apiToken.slice(-4)}`) : ui('Not configured')}
                   </span>
                   <button
                     type="button"
                     onClick={() => setApiTokenVisible((visible) => !visible)}
                     disabled={!apiToken || apiTokenLoading}
-                    aria-label={apiTokenVisible ? 'Hide API token' : 'Show API token'}
-                    title={apiTokenVisible ? 'Hide token' : 'Show token'}
+                    aria-label={ui(apiTokenVisible ? 'Hide API token' : 'Show API token')}
+                    title={ui(apiTokenVisible ? 'Hide token' : 'Show token')}
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {apiTokenVisible ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
@@ -2025,8 +2100,8 @@ const SystemAdminDashboard = () => {
               <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.25)]">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-[22px] font-semibold text-slate-900">Global System Lock</h3>
-                    <p className="mt-1 text-sm text-slate-500">Block non-administrator logins while maintenance is on.</p>
+                    <h3 className="text-[22px] font-semibold text-slate-900">{ui('Global System Lock')}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{ui('Block non-administrator logins while maintenance is on.')}</p>
                   </div>
                 </div>
 
@@ -2035,12 +2110,12 @@ const SystemAdminDashboard = () => {
                     type="button"
                     onClick={handleSystemMaintenanceToggle}
                     className={`inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${systemActive ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}
-                    aria-label="Toggle global system lock"
+                    aria-label={ui('Toggle global system lock')}
                   >
                     <span className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${systemActive ? 'bg-emerald-500' : 'bg-slate-300'}`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${systemActive ? 'translate-x-6' : 'translate-x-1'}`} />
                     </span>
-                    {systemActive ? 'Enabled' : 'Disabled'}
+                    {ui(systemActive ? 'Enabled' : 'Disabled')}
                   </button>
                 </div>
               </article>
@@ -2049,8 +2124,8 @@ const SystemAdminDashboard = () => {
             <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_30px_-20px_rgba(15,23,42,0.25)]">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h3 className="text-[22px] font-semibold text-slate-900">Audit Timeline</h3>
-                  <p className="text-sm text-slate-500">Real-time system events and compliance history.</p>
+                  <h3 className="text-[22px] font-semibold text-slate-900">{ui('Audit Timeline')}</h3>
+                  <p className="text-sm text-slate-500">{ui('Real-time system events and compliance history.')}</p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -2068,14 +2143,14 @@ const SystemAdminDashboard = () => {
                     onClick={() => setActiveTab('logs')}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
-                    View All Activity
+                    {ui('View All Activity')}
                   </button>
                 </div>
               </div>
 
               <div className="mt-6 space-y-3">
                 {auditTimelineLoading && !auditTimelineLogs.length ? (
-                  <p className="py-6 text-center text-sm text-slate-500">Loading activity...</p>
+                  <p className="py-6 text-center text-sm text-slate-500">{ui('Loading activity...')}</p>
                 ) : auditTimelineLogs.length ? auditTimelineLogs.filter((entry) => {
                   const query = auditSearch.trim().toLowerCase();
                   if (!query) return true;
@@ -2106,21 +2181,21 @@ const SystemAdminDashboard = () => {
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-slate-500">
-                              <span><strong className="font-semibold text-slate-600">By:</strong> {entry.user}</span>
-                              <span><strong className="font-semibold text-slate-600">IP:</strong> {entry.ip}</span>
-                              <span><strong className="font-semibold text-slate-600">Device:</strong> {device}</span>
-                              <span><strong className="font-semibold text-slate-600">Browser:</strong> {browser}</span>
-                              <span><strong className="font-semibold text-slate-600">Location:</strong> {entry.location}</span>
-                              <span><strong className="font-semibold text-slate-600">Device ID:</strong> {entry.deviceId}</span>
-                              <span><strong className="font-semibold text-slate-600">Interface:</strong> {entry.networkInterface}</span>
-                              <span><strong className="font-semibold text-slate-600">MAC:</strong> {entry.networkMac}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('By:')}</strong> {entry.user}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('IP:')}</strong> {entry.ip}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('Device:')}</strong> {device}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('Browser:')}</strong> {browser}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('Location:')}</strong> {entry.location}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('Device ID:')}</strong> {entry.deviceId}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('Interface:')}</strong> {entry.networkInterface}</span>
+                              <span><strong className="font-semibold text-slate-600">{ui('MAC:')}</strong> {entry.networkMac}</span>
                             </div>
                           </div>
                         </div>
                       </div>
                     );
                   })()
-                )) : <p className="py-6 text-center text-sm text-slate-500">No audit activity recorded yet.</p>}
+                )) : <p className="py-6 text-center text-sm text-slate-500">{ui('No audit activity recorded yet.')}</p>}
               </div>
             </article>
           </section>
@@ -2140,7 +2215,7 @@ const SystemAdminDashboard = () => {
               </div>
               <div className="mt-8 grid gap-4">
                 {auditTimelineLoading && !auditTimelineLogs.length ? (
-                  <p className="py-6 text-center text-sm text-slate-500">Loading activity...</p>
+                  <p className="py-6 text-center text-sm text-slate-500">{ui('Loading activity...')}</p>
                 ) : auditTimelineLogs.length ? auditTimelineLogs.map((entry) => (
                   <div key={entry.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -2152,14 +2227,14 @@ const SystemAdminDashboard = () => {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-4 text-slate-600 text-xs">
                       <span>{entry.time}</span>
-                      <span>IP address: {entry.ip}</span>
-                      <span>Device / browser: {entry.device}</span>
-                      <span>Browser ID: {entry.deviceId}</span>
-                      <span>Server interface: {entry.networkInterface}</span>
-                      <span>Interface MAC: {entry.networkMac}</span>
+                      <span>{ui('IP address:')} {entry.ip}</span>
+                      <span>{ui('Device / browser:')} {entry.device}</span>
+                      <span>{ui('Browser ID:')} {entry.deviceId}</span>
+                      <span>{ui('Server interface:')} {entry.networkInterface}</span>
+                      <span>{ui('Interface MAC:')} {entry.networkMac}</span>
                     </div>
                   </div>
-                )) : <p className="py-6 text-center text-sm text-slate-500">No audit activity recorded yet.</p>}
+                )) : <p className="py-6 text-center text-sm text-slate-500">{ui('No audit activity recorded yet.')}</p>}
               </div>
             </div>
           </section>
@@ -2181,21 +2256,21 @@ const SystemAdminDashboard = () => {
                   <h3 className="text-lg font-semibold text-slate-900">{t('systemHealth', 'System Health', 'የስርዓት ጤና')}</h3>
                   <p className="text-slate-600">{t('systemHealthDesc', 'Monitor system performance, resources, and status.', 'የስርዓት አፈጻጸም፣ ሀብቶች እና ሁኔታ ተከታተል')}</p>
                 </div>
-                <button type="button" onClick={async () => { try { const health = await adminApi.getDatabaseHealth(); setDbHealthMetrics((current) => ({ ...current, ...health })); toast.success('System health refreshed'); } catch (error) { toast.error(error?.message || 'Unable to refresh system health.'); } }} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500">
-                  <RefreshCw size={18} /> Refresh
+                <button type="button" onClick={async () => { try { const health = await adminApi.getDatabaseHealth(); setDbHealthMetrics((current) => ({ ...current, ...health })); toast.success(ui('System health refreshed')); } catch (error) { toast.error(error?.message || ui('Unable to refresh system health.')); } }} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-500">
+                  <RefreshCw size={18} /> {ui('Refresh')}
                 </button>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-3xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-slate-900">Storage & Backup</h4>
-                    <span className="text-xs font-medium text-blue-600">Last Backup: {dbHealthMetrics.lastBackup}</span>
+                    <h4 className="font-semibold text-slate-900">{ui('Storage & Backup')}</h4>
+                    <span className="text-xs font-medium text-blue-600">{ui('Last Backup:')} {dbHealthMetrics.lastBackup}</span>
                   </div>
                   <div className="space-y-4">
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-slate-600">Disk Usage</span>
+                        <span className="text-slate-600">{ui('Disk Usage')}</span>
                         <span className="font-semibold text-slate-900">{dbHealthMetrics.diskUsage}</span>
                       </div>
                       <div className="h-2 rounded-full bg-slate-200 overflow-hidden">
@@ -2204,8 +2279,8 @@ const SystemAdminDashboard = () => {
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-2">
-                        <span className="text-slate-600">Backup Retention</span>
-                        <span className="font-semibold text-slate-900">{backupRetentionDays} days</span>
+                        <span className="text-slate-600">{ui('Backup Retention')}</span>
+                        <span className="font-semibold text-slate-900">{backupRetentionDays} {ui('days')}</span>
                       </div>
                       <input 
                         type="range" 
@@ -2220,37 +2295,37 @@ const SystemAdminDashboard = () => {
                 </div>
 
                 <div className="rounded-3xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 p-6">
-                  <h4 className="font-semibold text-slate-900 mb-4">API Performance</h4>
+                  <h4 className="font-semibold text-slate-900 mb-4">{ui('API Performance')}</h4>
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Response Time</span>
+                      <span className="text-slate-600">{ui('Response Time')}</span>
                       <span className="font-semibold text-slate-900">145ms</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Request Rate</span>
+                      <span className="text-slate-600">{ui('Request Rate')}</span>
                       <span className="font-semibold text-slate-900">2,850/min</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Error Rate</span>
+                      <span className="text-slate-600">{ui('Error Rate')}</span>
                       <span className="font-semibold text-green-600">0.12%</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-3xl bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 p-6">
-                  <h4 className="font-semibold text-slate-900 mb-4">System Alerts</h4>
+                  <h4 className="font-semibold text-slate-900 mb-4">{ui('System Alerts')}</h4>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                      <span className="text-slate-600">All systems operational</span>
+                      <span className="text-slate-600">{ui('All systems operational')}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="h-2 w-2 rounded-full bg-yellow-500"></span>
-                      <span className="text-slate-600">Disk usage approaching threshold</span>
+                      <span className="text-slate-600">{ui('Disk usage approaching threshold')}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                      <span className="text-slate-600">Security protocols active</span>
+                      <span className="text-slate-600">{ui('Security protocols active')}</span>
                     </div>
                   </div>
                 </div>
@@ -2262,10 +2337,10 @@ const SystemAdminDashboard = () => {
         {activeTab === 'contact-info' && (
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900">Contact Us Details</h2>
-              <p className="mt-1 text-sm text-slate-500">Update the contact details shown on the public Contact page and site footer.</p>
+              <h2 className="text-xl font-semibold text-slate-900">{ui('Contact Us Details')}</h2>
+              <p className="mt-1 text-sm text-slate-500">{ui('Update the contact details shown on the public Contact page and site footer.')}</p>
             </div>
-            {contactInfoLoading ? <p className="py-8 text-center text-sm text-slate-500">Loading contact details...</p> : (
+            {contactInfoLoading ? <p className="py-8 text-center text-sm text-slate-500">{ui('Loading contact details...')}</p> : (
               <form onSubmit={saveContactInfo} className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   {[
@@ -2277,7 +2352,7 @@ const SystemAdminDashboard = () => {
                     ['mapQuery', 'Map Search Location', 'text'],
                   ].map(([key, label, type]) => (
                     <label key={key} className="block text-sm font-medium text-slate-700">
-                      {label}
+                      {ui(label)}
                       <input type={type} value={contactInfo[key] || ''} onChange={(event) => setContactInfo((current) => ({ ...current, [key]: event.target.value }))} required={['name', 'email', 'phone', 'location'].includes(key)} maxLength={key === 'email' ? 254 : 255} className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
                     </label>
                   ))}
@@ -2316,7 +2391,7 @@ const SystemAdminDashboard = () => {
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={headEditTransferMode} onChange={() => setHeadEditTransferMode((current) => !current)} />
-                  <span>Replace / transfer this head assignment to the selected department.</span>
+                  <span>{ui('Replace / transfer this head assignment to the selected department.')}</span>
                 </label>
               </div>
               <div className="mt-6 flex justify-end gap-3">

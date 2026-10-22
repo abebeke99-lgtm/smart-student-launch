@@ -1,6 +1,7 @@
 import React, { useContext, useMemo, useState } from 'react';
 import { FaUserGraduate, FaChevronLeft, FaChevronRight, FaSearch } from 'react-icons/fa';
 import { LanguageContext } from '../../context/LanguageContext';
+import { useUiText } from '../../hooks/useUiText';
 
 const pageSize = 10;
 
@@ -44,6 +45,7 @@ const getYearNumber = (value) => {
 import { studentApi } from '../../services/api';
 
 const StudentsSection = ({ departmentId, departments = [], initialStudents = null }) => {
+  const t = useUiText();
   const { strings } = useContext(LanguageContext);
   const [studentUsers, setStudentUsers] = useState([]);
 
@@ -133,14 +135,14 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
 
       <div className="mb-4 grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-3">
         {departments.length > 0 && <label className="text-sm text-gray-600">
-          <span className="mb-1 block font-medium">Department</span>
+          <span className="mb-1 block font-medium">{t('Department')}</span>
           <select value={selectedDepartment} onChange={(event) => { setSelectedDepartment(event.target.value); setCurrentPage(1); }} className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm">
-            <option value="All">All departments</option>
+            <option value="All">{t('All departments')}</option>
             {departments.map((department) => <option key={department.id} value={String(department.id)}>{department.name}</option>)}
           </select>
         </label>}
         <label className="text-sm text-gray-600">
-          <span className="mb-1 block font-medium">Year Level</span>
+          <span className="mb-1 block font-medium">{t('Year Level')}</span>
           <select
             value={selectedYearLevel}
             onChange={(event) => {
@@ -149,15 +151,15 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
             }}
             className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
           >
-            <option key="all" value="All">All</option>
+            <option key="all" value="All">{t('All')}</option>
             {yearLevelOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>{t(option)}</option>
             ))}
           </select>
         </label>
 
         <label className="text-sm text-gray-600">
-          <span className="mb-1 block font-medium">Program Type</span>
+          <span className="mb-1 block font-medium">{t('Program Type')}</span>
           <select
             value={selectedProgramType}
             onChange={(event) => {
@@ -166,15 +168,15 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
             }}
             className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
           >
-            <option key="all" value="All">All</option>
+            <option key="all" value="All">{t('All')}</option>
             {programTypeOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>{t(option)}</option>
             ))}
           </select>
         </label>
 
         <label className="text-sm text-gray-600">
-          <span className="mb-1 block font-medium">Section</span>
+          <span className="mb-1 block font-medium">{t('Section')}</span>
           <select
             value={selectedSection}
             onChange={(event) => {
@@ -183,35 +185,35 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
             }}
             className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
           >
-            <option key="all" value="All">All</option>
+            <option key="all" value="All">{t('All')}</option>
             {sectionOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>{t(option)}</option>
             ))}
           </select>
         </label>
       </div>
 
       <label className="mb-4 block max-w-md text-sm text-gray-600">
-        <span className="mb-1 block font-medium">Search by Student ID or Name</span>
+        <span className="mb-1 block font-medium">{t('Search by Student ID or Name')}</span>
         <div className="relative">
           <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCurrentPage(1); }} placeholder="Student ID or name" className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm" />
+          <input type="search" value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); setCurrentPage(1); }} placeholder={t('Student ID or name')} className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm" />
         </div>
       </label>
 
       <div className="mb-4 text-sm text-gray-500">
-        {filteredStudents.length} student{filteredStudents.length === 1 ? '' : 's'} found for the selected filters.
+        {filteredStudents.length} {t(filteredStudents.length === 1 ? 'student' : 'students')} {t('found for the selected filters.')}
       </div>
 
       <div className="overflow-x-auto rounded-3xl border border-gray-200 bg-white shadow-sm">
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50 text-gray-500">
-              <th className="py-3 px-4 font-medium">Student ID</th>
-              <th className="py-3 px-4 font-medium">Full Name</th>
-              <th className="py-3 px-4 font-medium">Phone Number</th>
-              <th className="py-3 px-4 font-medium">Program Type</th>
-              <th className="py-3 px-4 font-medium">Year / Section</th>
+              <th className="py-3 px-4 font-medium">{t('Student ID')}</th>
+              <th className="py-3 px-4 font-medium">{t('Full Name')}</th>
+              <th className="py-3 px-4 font-medium">{t('Phone Number')}</th>
+              <th className="py-3 px-4 font-medium">{t('Program Type')}</th>
+              <th className="py-3 px-4 font-medium">{t('Year / Section')}</th>
             </tr>
           </thead>
           <tbody>
@@ -231,9 +233,9 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
               <tr>
                 <td colSpan={5} className="py-10 px-4 text-center text-gray-500">
                   {selectedProgramType !== 'All' && selectedYearLevel !== 'All' && selectedSection !== 'All' ? (
-                    `No students found matching ${selectedProgramType} - ${selectedYearLevel} - ${selectedSection} in your department.`
+                    `${t('No students found matching')} ${t(selectedProgramType)} - ${t(selectedYearLevel)} - ${t(selectedSection)} ${t('in your department.')}`
                   ) : (
-                    'No students registered for the selected filters.'
+                    t('No students registered for the selected filters.')
                   )}
                 </td>
               </tr>
@@ -244,7 +246,7 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
 
       <div className="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-gray-500">
-          Page {safeCurrentPage} of {totalPages}
+          {t('Page')} {safeCurrentPage} {t('of')} {totalPages}
         </p>
 
         <div className="flex items-center gap-2">
@@ -254,7 +256,7 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
             disabled={safeCurrentPage === 1}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <FaChevronLeft className="text-xs" /> Previous
+            <FaChevronLeft className="text-xs" /> {t('Previous')}
           </button>
           <button
             type="button"
@@ -262,7 +264,7 @@ const StudentsSection = ({ departmentId, departments = [], initialStudents = nul
             disabled={safeCurrentPage === totalPages}
             className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Next <FaChevronRight className="text-xs" />
+            {t('Next')} <FaChevronRight className="text-xs" />
           </button>
         </div>
       </div>

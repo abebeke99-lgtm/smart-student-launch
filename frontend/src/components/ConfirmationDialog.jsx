@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Info, KeyRound, Trash2 } from 'lucide-react';
+import { useUiText } from '../hooks/useUiText';
 
 const iconByVariant = {
   danger: { Icon: Trash2, iconClass: 'bg-rose-100 text-rose-700', buttonClass: 'bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-500' },
@@ -9,6 +10,7 @@ const iconByVariant = {
 };
 
 const ConfirmationDialogView = ({ confirmation, onCancel, onConfirm }) => {
+  const t = useUiText();
   useEffect(() => {
     if (!confirmation) return undefined;
     const handleKeyDown = (event) => {
@@ -51,7 +53,7 @@ const ConfirmationDialogView = ({ confirmation, onCancel, onConfirm }) => {
             onClick={onCancel}
             className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
-            {confirmation.cancelLabel || 'Cancel'}
+            {t(confirmation.cancelLabel || 'Cancel')}
           </button>
           <button
             type="button"
@@ -59,7 +61,7 @@ const ConfirmationDialogView = ({ confirmation, onCancel, onConfirm }) => {
             onClick={onConfirm}
             className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${style.buttonClass}`}
           >
-            {confirmation.confirmLabel || 'Confirm'}
+            {t(confirmation.confirmLabel || 'Confirm')}
           </button>
         </div>
       </section>
@@ -69,6 +71,7 @@ const ConfirmationDialogView = ({ confirmation, onCancel, onConfirm }) => {
 };
 
 export const useConfirmation = () => {
+  const t = useUiText();
   const [confirmation, setConfirmation] = useState(null);
   const resolveRef = useRef(null);
 
@@ -82,13 +85,13 @@ export const useConfirmation = () => {
     if (resolveRef.current) resolveRef.current(false);
     resolveRef.current = resolve;
     setConfirmation({
-      title: options.title || 'Are you sure?',
-      description: options.description || 'Please confirm that you want to continue.',
-      confirmLabel: options.confirmLabel || 'Confirm',
-      cancelLabel: options.cancelLabel || 'Cancel',
+      title: t(options.title || 'Are you sure?'),
+      description: t(options.description || 'Please confirm that you want to continue.'),
+      confirmLabel: t(options.confirmLabel || 'Confirm'),
+      cancelLabel: t(options.cancelLabel || 'Cancel'),
       variant: options.variant || 'primary',
     });
-  }), []);
+  }), [t]);
 
   useEffect(() => () => {
     resolveRef.current?.(false);

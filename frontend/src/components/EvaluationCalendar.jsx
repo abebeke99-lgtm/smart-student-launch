@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { useUiText } from '../hooks/useUiText';
 
 const MOCK_EVENTS = [
   {
@@ -150,24 +151,24 @@ const getAcademicYearOptions = () => ['2025/2026', '2024/2025', '2023/2024'];
 const getSemesterOptions = () => ['Semester I', 'Semester II', 'Kiremt'];
 const getRoleOptions = () => ['All', 'Student', 'Dept Head', 'Peer', 'Admin'];
 
-const getCountdownText = (dateStr, timeStr) => {
+const getCountdownText = (dateStr, timeStr, t) => {
   if (!dateStr) return null;
 
   const target = new Date(`${dateStr}T${timeStr || '00:00'}:00`);
   const now = new Date();
   const diff = target.getTime() - now.getTime();
 
-  if (diff <= 0) return 'Closed';
+  if (diff <= 0) return t('Closed');
 
   const totalHours = Math.floor(diff / (1000 * 60 * 60));
   const days = Math.floor(totalHours / 24);
   const hours = totalHours % 24;
 
-  if (days > 0) return `Starts in ${days} day${days > 1 ? 's' : ''}`;
-  if (hours > 0) return `Starts in ${hours} hour${hours > 1 ? 's' : ''}`;
+  if (days > 0) return t(days > 1 ? 'Starts in {count} days' : 'Starts in {count} day').replace('{count}', days);
+  if (hours > 0) return t(hours > 1 ? 'Starts in {count} hours' : 'Starts in {count} hour').replace('{count}', hours);
 
   const minutes = Math.max(1, Math.floor((diff / (1000 * 60)) % 60));
-  return `Starts in ${minutes} min`;
+  return t('Starts in {count} min').replace('{count}', minutes);
 };
 
 const detectConflict = (events, candidate) => {
@@ -204,6 +205,7 @@ const languageLabel = (department, language = 'en') => {
 };
 
 const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
+  const t = useUiText();
   const [events, setEvents] = useState(MOCK_EVENTS);
   const [selectedDate, setSelectedDate] = useState(new Date('2026-08-20'));
   const [viewMode, setViewMode] = useState('calendar');
@@ -344,7 +346,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
     event.preventDefault();
 
     if (!draft.title.trim()) {
-      toast.error('Please enter a calendar event title.');
+      toast.error(t('Please enter a calendar event title.'));
       return;
     }
 
@@ -352,7 +354,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
 
     const hasConflict = detectConflict(events, candidate);
     if (hasConflict) {
-      toast.error('Conflict detected: this department already has an overlapping evaluation window.');
+      toast.error(t('Conflict detected: this department already has an overlapping evaluation window.'));
       return;
     }
 
@@ -390,7 +392,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
       };
 
       setEvents((current) => [normalizedEvent, ...current]);
-      toast.success('Calendar event added successfully.');
+      toast.success(t('Calendar event added successfully.'));
       if (onCreateEvent) onCreateEvent(normalizedEvent);
       setDraft({
         title: '',
@@ -408,7 +410,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
       setShowCreateModal(false);
     } catch (error) {
       console.error('Calendar add failed:', error);
-      toast.error(error?.response?.data?.message || 'Unable to add event.');
+      toast.error(error?.response?.data?.message || t('Unable to add event.'));
     }
   };
 
@@ -416,10 +418,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
     try {
       await axios.delete(`/api/calendar/events/${eventId}`);
       setEvents((current) => current.filter((event) => event.id !== eventId));
-      toast.success('Calendar event deleted successfully.');
+      toast.success(t('Calendar event deleted successfully.'));
     } catch (error) {
       console.error('Calendar delete failed:', error);
-      toast.error(error?.response?.data?.message || 'Unable to delete event.');
+      toast.error(error?.response?.data?.message || t('Unable to delete event.'));
     }
   };
 
@@ -431,10 +433,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
         eventId: event.id,
         eventType: event.type,
       });
-      toast.success('Stakeholder notifications sent successfully.');
+      toast.success(t('Stakeholder notifications sent successfully.'));
     } catch (error) {
       console.error('Broadcast send failed:', error);
-      toast.error('Notification delivery failed. Please retry.');
+      toast.error(t('Notification delivery failed. Please retry.'));
     }
   };
 
@@ -461,7 +463,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
       link.download = 'evaluation-calendar.csv';
       link.click();
       URL.revokeObjectURL(url);
-      toast.success('CSV export downloaded.');
+      toast.success(t('CSV export downloaded.'));
       return;
     }
 
@@ -492,7 +494,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
       link.download = 'evaluation-calendar.ics';
       link.click();
       URL.revokeObjectURL(url);
-      toast.success('ICS calendar file generated.');
+      toast.success(t('ICS calendar file generated.'));
       return;
     }
 
@@ -501,7 +503,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
     printWindow.document.write(`<pre>${printable}</pre>`);
     printWindow.document.close();
     printWindow.focus();
-    toast.success('Printable calendar opened.');
+    toast.success(t('Printable calendar opened.'));
   };
 
   return (
@@ -509,8 +511,8 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
       <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.35)]">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Academic hub</p>
-            <h3 className="mt-1 text-xl font-bold text-slate-900">Evaluation Calendar</h3>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Academic hub')}</p>
+            <h3 className="mt-1 text-xl font-bold text-slate-900">{t('Evaluation Calendar')}</h3>
           </div>
 
           <div className="flex items-center gap-2">
@@ -520,7 +522,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
             >
               <Filter size={15} />
-              Filter
+              {t('Filter')}
             </button>
 
             <button
@@ -529,7 +531,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:opacity-95"
             >
               <Plus size={15} />
-              Schedule Event
+              {t('Schedule Event')}
             </button>
           </div>
         </div>
@@ -538,7 +540,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
           <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <label className="block text-xs font-medium text-slate-600">
-                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">Academic year</span>
+                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">{t('Academic year')}</span>
                 <select value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-blue-500">
                   {getAcademicYearOptions().map((year) => (
                     <option key={year} value={year}>{year}</option>
@@ -547,7 +549,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               </label>
 
               <label className="block text-xs font-medium text-slate-600">
-                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">Semester</span>
+                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">{t('Semester')}</span>
                 <select value={semester} onChange={(e) => setSemester(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-blue-500">
                   {getSemesterOptions().map((phase) => (
                     <option key={phase} value={phase}>{phase}</option>
@@ -556,9 +558,9 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               </label>
 
               <label className="block text-xs font-medium text-slate-600">
-                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">Scope</span>
+                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">{t('Scope')}</span>
                 <select value={collegeFilter} onChange={(e) => setCollegeFilter(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-blue-500">
-                  <option value="all">All colleges</option>
+                  <option value="all">{t('All colleges')}</option>
                   {initialCollegeData.map((college) => (
                     <option key={college.id} value={college.id}>{college.en}</option>
                   ))}
@@ -566,9 +568,9 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               </label>
 
               <label className="block text-xs font-medium text-slate-600">
-                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">Department</span>
+                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">{t('Department')}</span>
                 <select value={departmentFilter} onChange={(e) => setDepartmentFilter(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-blue-500">
-                  <option value="all">All departments</option>
+                  <option value="all">{t('All departments')}</option>
                   {allDepartments.map((department) => (
                     <option key={department.id} value={department.id}>{department.label}</option>
                   ))}
@@ -576,10 +578,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               </label>
 
               <label className="block text-xs font-medium text-slate-600">
-                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">Role</span>
+                <span className="mb-1.5 block uppercase tracking-[0.16em] text-slate-500">{t('Role')}</span>
                 <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 outline-none focus:border-blue-500">
                   {getRoleOptions().map((role) => (
-                    <option key={role} value={role}>{role}</option>
+                    <option key={role} value={role}>{t(role)}</option>
                   ))}
                 </select>
               </label>
@@ -598,7 +600,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
             { label: 'Deadlines', value: stats.deadline, className: 'bg-rose-50 text-rose-700 ring-1 ring-rose-100' },
           ].map((stat) => (
             <div key={stat.label} className={`rounded-2xl px-3 py-2 ${stat.className}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">{stat.label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-75">{t(stat.label)}</p>
               <p className="mt-1 text-xl font-bold leading-none">{stat.value}</p>
             </div>
           ))}
@@ -621,7 +623,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               }`}
             >
               <Icon size={14} />
-              {label}
+              {t(label)}
             </button>
           ))}
 
@@ -641,13 +643,13 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.35)]">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Planner</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Planner')}</p>
                 <h3 className="mt-1 text-lg font-bold text-slate-900">{monthLabel}</h3>
               </div>
 
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setSelectedDate(new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1))} className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Prev</button>
-                <button type="button" onClick={() => setSelectedDate(new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1))} className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Next</button>
+                <button type="button" onClick={() => setSelectedDate(new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 1, 1))} className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">{t('Prev')}</button>
+                <button type="button" onClick={() => setSelectedDate(new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1))} className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">{t('Next')}</button>
                 <button type="button" onClick={() => setCalendarMode((mode) => (mode === 'G.C.' ? 'E.C.' : 'G.C.'))} className="rounded-xl border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-100">
                   {calendarMode}
                 </button>
@@ -696,10 +698,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.35)]">
             <div className="mb-3 flex items-center justify-between gap-2">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Agenda</p>
-                <h3 className="mt-1 text-lg font-bold text-slate-900">Selected day</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Agenda')}</p>
+                <h3 className="mt-1 text-lg font-bold text-slate-900">{t('Selected day')}</h3>
               </div>
-              <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">{selectedDayEvents.length} items</span>
+              <span className="rounded-full bg-white px-2 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200">{selectedDayEvents.length} {t('items')}</span>
             </div>
 
             {selectedDayEvents.length ? (
@@ -723,7 +725,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
                 })}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">No milestones on this day.</div>
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">{t('No milestones on this day.')}</div>
             )}
           </div>
         </div>
@@ -733,16 +735,16 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.35)]">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Timeline</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">Milestone pipeline</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Timeline')}</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">{t('Milestone pipeline')}</h3>
             </div>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">{filteredEvents.length} active</span>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">{filteredEvents.length} {t('active')}</span>
           </div>
 
           <div className="space-y-3">
             {filteredEvents.map((event) => {
               const style = calendarTypeStyles[event.type] || calendarTypeStyles.Evaluation;
-              const countdown = getCountdownText(event.date, event.time);
+              const countdown = getCountdownText(event.date, event.time, t);
 
               return (
                 <div key={event.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
@@ -772,10 +774,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
                     <p className="text-xs text-slate-500">{event.description}</p>
                     <div className="flex items-center gap-2">
                       <button type="button" onClick={() => handleNotifyStakeholders(event)} className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-[10px] font-semibold text-white hover:bg-blue-500">
-                        <BellRing size={12} /> Notify
+                        <BellRing size={12} /> {t('Notify')}
                       </button>
                       <button type="button" onClick={() => handleDeleteEvent(event.id)} className="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100">
-                        <Trash2 size={12} /> Delete
+                        <Trash2 size={12} /> {t('Delete')}
                       </button>
                     </div>
                   </div>
@@ -790,10 +792,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.35)]">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Upcoming</p>
-              <h3 className="mt-1 text-lg font-bold text-slate-900">Next milestones</h3>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Upcoming')}</p>
+              <h3 className="mt-1 text-lg font-bold text-slate-900">{t('Next milestones')}</h3>
             </div>
-            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-700">{upcomingEvents.length} planned</span>
+            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-indigo-700">{upcomingEvents.length} {t('planned')}</span>
           </div>
 
           <div className="space-y-3">
@@ -813,7 +815,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">{formatCalendarDate(event.date, calendarMode)}</span>
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">{event.time}</span>
                     <span className="rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">{event.semester}</span>
-                    <span className="rounded-full bg-blue-100 px-2 py-1 font-medium text-blue-700">{getCountdownText(event.date, event.time)}</span>
+                    <span className="rounded-full bg-blue-100 px-2 py-1 font-medium text-blue-700">{getCountdownText(event.date, event.time, t)}</span>
                   </div>
                 </div>
               );
@@ -827,10 +829,10 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
           <div className="w-full max-w-2xl rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_35px_80px_-35px_rgba(15,23,42,0.55)]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">Create</p>
-                <h3 className="mt-1 text-xl font-bold text-slate-900">Add milestone</h3>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{t('Create')}</p>
+                <h3 className="mt-1 text-xl font-bold text-slate-900">{t('Add milestone')}</h3>
               </div>
-              <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100">
+              <button type="button" onClick={() => setShowCreateModal(false)} aria-label={t('Close')} className="rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100">
                 <X size={16} />
               </button>
             </div>
@@ -838,36 +840,36 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
             <form onSubmit={handleAddEvent} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Title</span>
-                  <input value={draft.title} onChange={(e) => setDraft((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder="Academic review cycle" required />
+                  <span className="mb-1.5 block">{t('Title')}</span>
+                  <input value={draft.title} onChange={(e) => setDraft((current) => ({ ...current, title: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder={t('Academic review cycle')} required />
                 </label>
 
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Type</span>
+                  <span className="mb-1.5 block">{t('Type')}</span>
                   <select value={draft.type} onChange={(e) => setDraft((current) => ({ ...current, type: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
-                    <option value="Evaluation">Evaluation</option>
-                    <option value="Review">Review</option>
-                    <option value="Audit">Audit</option>
-                    <option value="Deadline">Deadline</option>
+                    <option value="Evaluation">{t('Evaluation')}</option>
+                    <option value="Review">{t('Review')}</option>
+                    <option value="Audit">{t('Audit')}</option>
+                    <option value="Deadline">{t('Deadline')}</option>
                   </select>
                 </label>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Date</span>
+                  <span className="mb-1.5 block">{t('Date')}</span>
                   <input type="date" value={draft.date} onChange={(e) => setDraft((current) => ({ ...current, date: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" required />
                 </label>
 
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Time</span>
+                  <span className="mb-1.5 block">{t('Time')}</span>
                   <input type="time" value={draft.time} onChange={(e) => setDraft((current) => ({ ...current, time: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" required />
                 </label>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">College</span>
+                  <span className="mb-1.5 block">{t('College')}</span>
                   <select value={draft.college} onChange={(e) => setDraft((current) => ({ ...current, college: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
                     {initialCollegeData.map((college) => (
                       <option key={college.id} value={college.id}>{college.en}</option>
@@ -876,7 +878,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
                 </label>
 
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Department</span>
+                  <span className="mb-1.5 block">{t('Department')}</span>
                   <select value={draft.department} onChange={(e) => setDraft((current) => ({ ...current, department: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
                     {allDepartments.map((department) => (
                       <option key={department.id} value={department.id}>{department.label}</option>
@@ -887,23 +889,23 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Role</span>
+                  <span className="mb-1.5 block">{t('Role')}</span>
                   <select value={draft.role} onChange={(e) => setDraft((current) => ({ ...current, role: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
                     {getRoleOptions().filter((item) => item !== 'All').map((role) => (
-                      <option key={role} value={role}>{role}</option>
+                      <option key={role} value={role}>{t(role)}</option>
                     ))}
                   </select>
                 </label>
 
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Location</span>
-                  <input value={draft.location} onChange={(e) => setDraft((current) => ({ ...current, location: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder="Main campus hall" />
+                  <span className="mb-1.5 block">{t('Location')}</span>
+                  <input value={draft.location} onChange={(e) => setDraft((current) => ({ ...current, location: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder={t('Main campus hall')} />
                 </label>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Academic year</span>
+                  <span className="mb-1.5 block">{t('Academic year')}</span>
                   <select value={draft.academicYear} onChange={(e) => setDraft((current) => ({ ...current, academicYear: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
                     {getAcademicYearOptions().map((year) => (
                       <option key={year} value={year}>{year}</option>
@@ -912,7 +914,7 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
                 </label>
 
                 <label className="block text-sm font-medium text-slate-700">
-                  <span className="mb-1.5 block">Semester</span>
+                  <span className="mb-1.5 block">{t('Semester')}</span>
                   <select value={draft.semester} onChange={(e) => setDraft((current) => ({ ...current, semester: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white">
                     {getSemesterOptions().map((phase) => (
                       <option key={phase} value={phase}>{phase}</option>
@@ -922,13 +924,13 @@ const EvaluationCalendar = ({ initialCollegeData = [], onCreateEvent }) => {
               </div>
 
               <label className="block text-sm font-medium text-slate-700">
-                <span className="mb-1.5 block">Description</span>
-                <textarea rows={3} value={draft.description} onChange={(e) => setDraft((current) => ({ ...current, description: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder="Add the review purpose or communication note" />
+                <span className="mb-1.5 block">{t('Description')}</span>
+                <textarea rows={3} value={draft.description} onChange={(e) => setDraft((current) => ({ ...current, description: e.target.value }))} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white" placeholder={t('Add the review purpose or communication note')} />
               </label>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">Cancel</button>
-                <button type="submit" className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:opacity-95">Save milestone</button>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">{t('Cancel')}</button>
+                <button type="submit" className="rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 hover:opacity-95">{t('Save milestone')}</button>
               </div>
             </form>
           </div>

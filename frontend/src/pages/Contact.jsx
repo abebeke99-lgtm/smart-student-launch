@@ -5,9 +5,12 @@ import MapEmbed from '../components/MapEmbed';
 import { LanguageContext } from '../context/LanguageContext';
 import { API_URL } from '../../config';
 import campusPhoto from '../assets/campus.jpg';
+import { useUiText } from '../hooks/useUiText';
+import { isValidEmail, stripHtmlTags } from '../utils/inputValidation';
 
 const Contact = () => {
   const { language, strings } = useContext(LanguageContext);
+  const t = useUiText();
   const copy = strings.contactPage;
   const [formData, setFormData] = useState({ name: '', email: '', subject: '', message: '' });
   const [loading, setLoading] = useState(false);
@@ -52,11 +55,6 @@ const Contact = () => {
   }, []);
 
   // Validate email format
-  const isValidEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
   // Validate form data
   const validateForm = () => {
     const newErrors = {};
@@ -87,11 +85,13 @@ const Contact = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    // Clear error for this field when user starts typing
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: '' });
-    }
+    setFormData((current) => ({ ...current, [name]: value }));
+    setErrors((current) => ({
+      ...current,
+      [name]: name === 'email' && value.trim() && !isValidEmail(value)
+        ? t('Enter a valid email address.')
+        : '',
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -111,10 +111,10 @@ const Contact = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name.trim(),
+          name: stripHtmlTags(formData.name),
           email: formData.email.trim(),
-          subject: formData.subject.trim(),
-          message: formData.message.trim(),
+          subject: stripHtmlTags(formData.subject),
+          message: stripHtmlTags(formData.message),
         }),
       });
 
@@ -147,7 +147,7 @@ const Contact = () => {
   const contactCards = [
     {
       label: copy.adminName,
-      value: adminContact.name || 'Admin',
+      value: adminContact.name || t('Admin'),
       detail: adminContact.institution?.split(' (')[0],
       icon: FaUser,
       theme: 'border-purple-100 bg-purple-50/80 text-purple-700',
@@ -179,8 +179,8 @@ const Contact = () => {
     },
     {
       label: copy.officeHours,
-      value: adminContact.officeDays,
-      detail: adminContact.officeHours,
+      value: adminContact.officeDays === 'Mon-Fri' ? t('Mon-Fri') : adminContact.officeDays,
+      detail: adminContact.officeHours === '9:00 AM - 5:00 PM' ? t('9:00 AM - 5:00 PM') : adminContact.officeHours,
       icon: FaClock,
       theme: 'border-amber-100 bg-amber-50/80 text-amber-700',
       iconTheme: 'bg-amber-500 text-white',
@@ -202,7 +202,7 @@ const Contact = () => {
         <div className="container-custom relative flex min-h-[250px] items-center justify-between gap-8 py-10 md:min-h-[260px] md:py-12">
           <div className="max-w-2xl">
             <span className="inline-flex rounded-full border border-blue-200 bg-blue-100 px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-[#2B6CB0]">
-              GET IN TOUCH
+              {t('GET IN TOUCH')}
             </span>
             <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-[#16345f] sm:text-5xl">{copy.title}</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">{copy.intro}</p>
@@ -247,7 +247,7 @@ const Contact = () => {
             ))}
 
             <div className="group relative mt-4 h-40 overflow-hidden rounded-2xl border border-white bg-white shadow-md">
-              <img src={campusPhoto} alt="Mekdela Amba University campus" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <img src={campusPhoto} alt={`Mekdela Amba University ${t('campus')}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent" />
               <div className="absolute bottom-3 left-4 right-4 text-white">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-100">{copy.institution}</p>
@@ -263,7 +263,7 @@ const Contact = () => {
               </span>
               <div>
                 <h2 className="text-xl font-bold text-[#16345f] sm:text-2xl">{copy.sendMessage}</h2>
-                <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">Fill out the form below and we’ll get back to you as soon as possible.</p>
+                <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">{t('Fill out the form below and we’ll get back to you as soon as possible.')}</p>
               </div>
             </div>
             <form onSubmit={handleSubmit} className="space-y-3.5">

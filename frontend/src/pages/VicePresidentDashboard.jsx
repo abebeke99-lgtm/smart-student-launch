@@ -14,14 +14,16 @@ import {
   OfficialLetterReference,
 } from '../components/OfficialLetterMetadata';
 import EvaluationScoreBreakdown from '../components/EvaluationScoreBreakdown';
+import useUiText from '../hooks/useUiText';
 
 const dashboardTabs = new Set(['overview', 'evaluate-academic-directorate', 'reports']);
 
 const getStatus = (person) => String(person.evaluation_status || '').toLowerCase();
 const isEvaluated = (person) => ['completed', 'published', 'approved'].includes(getStatus(person));
 const isPublished = (person) => getStatus(person) === 'published';
-const displayName = (person) => person.full_name || person.username || 'Academic Directorate staff';
+const displayName = (person, t) => person.full_name || person.username || t('Academic Directorate staff');
 const VicePresidentDashboard = () => {
+  const t = useUiText();
   const location = useLocation();
   const navigate = useNavigate();
   const [staff, setStaff] = useState([]);
@@ -44,11 +46,11 @@ const VicePresidentDashboard = () => {
       setCycle(result.cycle || null);
       setStaff(Array.isArray(result.staff) ? result.staff : []);
     } catch (error) {
-      setLoadError(error.message || 'Unable to load Academic Directorate staff.');
+      setLoadError(error.message || t('Unable to load Academic Directorate staff.'));
     } finally {
       if (showLoader) setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void loadAcademicDirectorate();
@@ -80,7 +82,7 @@ const VicePresidentDashboard = () => {
       strengths,
       weaknesses,
     });
-    toast.success('Academic Directorate evaluation saved.');
+    toast.success(t('Academic Directorate evaluation saved.'));
     await loadAcademicDirectorate(false);
   };
 
@@ -90,10 +92,10 @@ const VicePresidentDashboard = () => {
     setCalculatingResults(true);
     try {
       const result = await vicePresidentApi.calculatePublishResults();
-      toast.success(`${result?.count || 0} Academic Directorate result(s) calculated and published.`);
+      toast.success(`${result?.count || 0} ${t('Academic Directorate result(s) calculated and published.')}`);
       await loadAcademicDirectorate(false);
     } catch (error) {
-      toast.error(error.message || 'Unable to calculate and publish Vice President results.');
+      toast.error(error.message || t('Unable to calculate and publish Vice President results.'));
     } finally {
       setCalculatingResults(false);
     }
@@ -116,7 +118,7 @@ const VicePresidentDashboard = () => {
     return (
       <div className="flex min-h-64 items-center justify-center gap-3 text-slate-600">
         <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-blue-700" />
-        Loading Vice President dashboard...
+        {t('Loading Vice President dashboard...')}
       </div>
     );
   }
@@ -129,7 +131,7 @@ const VicePresidentDashboard = () => {
           <div className="flex-1">
             <p>{loadError}</p>
             <button type="button" onClick={() => void loadAcademicDirectorate()} className="mt-2 font-semibold underline">
-              Try again
+              {t('Try again')}
             </button>
           </div>
         </div>
@@ -137,7 +139,7 @@ const VicePresidentDashboard = () => {
 
       {!loadError && !cycle && (
         <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          There is no active evaluation cycle. The staff directory is available, but new evaluations and current-cycle results are unavailable.
+          {t('There is no active evaluation cycle. The staff directory is available, but new evaluations and current-cycle results are unavailable.')}
         </p>
       )}
 
@@ -145,31 +147,31 @@ const VicePresidentDashboard = () => {
         <div className="space-y-6">
           <section className="rounded-3xl border border-blue-100 bg-blue-50 px-6 py-7">
             <p className="text-sm font-semibold uppercase tracking-wider text-blue-700">Mekdela Amba University</p>
-            <h1 className="mt-3 text-3xl font-bold text-blue-950">Vice President Overview</h1>
-            <p className="mt-2 text-sm text-blue-800">Review Academic Directorate evaluations and current cycle progress.</p>
+            <h1 className="mt-3 text-3xl font-bold text-blue-950">{t('Vice President Overview')}</h1>
+            <p className="mt-2 text-sm text-blue-800">{t('Review Academic Directorate evaluations and current cycle progress.')}</p>
             {cycle && (
               <p className="mt-3 text-sm font-semibold text-blue-950">
-                Cycle: {cycle.academicYear} · Semester {cycle.semester}
-                {cycle.deadline ? ` · Deadline: ${formatEvaluationDeadline(cycle.deadline)}` : ''}
+                {t('Cycle')}: {cycle.academicYear} · {t('Semester')} {cycle.semester}
+                {cycle.deadline ? ` · ${t('Deadline')}: ${formatEvaluationDeadline(cycle.deadline)}` : ''}
               </p>
             )}
           </section>
           <div className="dashboard-grid min-w-0">
-            <InteractiveMetricCard label="Academic Directorate Staff" value={staff.length} icon={Users} tone="cyan" onClick={() => openTab('evaluate-academic-directorate')} />
-            <InteractiveMetricCard label="Pending Evaluations" value={pendingCount} icon={ClipboardCheck} tone="amber" onClick={() => openTab('evaluate-academic-directorate')} />
-            <InteractiveMetricCard label="Completed Evaluations" value={completedCount} icon={CheckCircle2} tone="emerald" onClick={() => openTab('reports')} />
+            <InteractiveMetricCard label={t('Academic Directorate Staff')} value={staff.length} icon={Users} tone="cyan" onClick={() => openTab('evaluate-academic-directorate')} />
+            <InteractiveMetricCard label={t('Pending Evaluations')} value={pendingCount} icon={ClipboardCheck} tone="amber" onClick={() => openTab('evaluate-academic-directorate')} />
+            <InteractiveMetricCard label={t('Completed Evaluations')} value={completedCount} icon={CheckCircle2} tone="emerald" onClick={() => openTab('reports')} />
           </div>
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Evaluation progress</h2>
-                <p className="mt-1 text-sm text-slate-600">{completedCount} of {staff.length} staff evaluations completed.</p>
+                <h2 className="text-lg font-bold text-slate-900">{t('Evaluation progress')}</h2>
+                <p className="mt-1 text-sm text-slate-600">{t('{completed} of {total} staff evaluations completed.').replace('{completed}', String(completedCount)).replace('{total}', String(staff.length))}</p>
               </div>
               <button type="button" onClick={() => openTab('evaluate-academic-directorate')} className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50" disabled={!cycle}>
-                Evaluate Academic Directorate
+                {t('Evaluate Academic Directorate')}
               </button>
             </div>
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Evaluation progress" aria-valuemin={0} aria-valuemax={staff.length} aria-valuenow={completedCount}>
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label={t('Evaluation progress')} aria-valuemin={0} aria-valuemax={staff.length} aria-valuenow={completedCount}>
               <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${staff.length ? (completedCount / staff.length) * 100 : 0}%` }} />
             </div>
           </section>
@@ -179,12 +181,12 @@ const VicePresidentDashboard = () => {
       {activeTab === 'evaluate-academic-directorate' && (
         <div className="space-y-4">
           <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-blue-950">
-            <h2 className="text-lg font-bold">Academic Directorate evaluation</h2>
-            <p className="mt-1 text-sm">Rate each criterion from 1–5 or select NA. Completed evaluations can be reviewed from the list.</p>
+            <h2 className="text-lg font-bold">{t('Academic Directorate evaluation')}</h2>
+            <p className="mt-1 text-sm">{t('Rate each criterion from 1–5 or select NA. Completed evaluations can be reviewed from the list.')}</p>
             {cycle && (
               <p className="mt-2 text-sm font-semibold">
-                Cycle: {cycle.academicYear} · Semester {cycle.semester}
-                {cycle.deadline ? ` · Deadline: ${formatEvaluationDeadline(cycle.deadline)}` : ''}
+                {t('Cycle')}: {cycle.academicYear} · {t('Semester')} {cycle.semester}
+                {cycle.deadline ? ` · ${t('Deadline')}: ${formatEvaluationDeadline(cycle.deadline)}` : ''}
               </p>
             )}
           </section>
@@ -197,7 +199,7 @@ const VicePresidentDashboard = () => {
             />
           ) : (
             <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-              Start an evaluation cycle to submit staff evaluations.
+              {t('Start an evaluation cycle to submit staff evaluations.')}
             </section>
           )}
         </div>
@@ -207,27 +209,27 @@ const VicePresidentDashboard = () => {
         <div className="space-y-5">
           <section className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm print:hidden">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Academic Directorate Final Results</h2>
-              <p className="mt-1 text-sm text-slate-500">Calculate and publish completed Vice President evaluations.</p>
+              <h2 className="text-xl font-bold text-slate-900">{t('Academic Directorate Final Results')}</h2>
+              <p className="mt-1 text-sm text-slate-500">{t('Calculate and publish completed Vice President evaluations.')}</p>
             </div>
             <button type="button" onClick={() => void calculateAndPublishResults()} disabled={calculatingResults || !cycle || completedCount === 0} className="rounded-lg bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60">
-              {calculatingResults ? 'Calculating...' : 'Calculate & Publish Results'}
+              {calculatingResults ? t('Calculating...') : t('Calculate & Publish Results')}
             </button>
           </section>
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-5">
-              <h2 className="text-xl font-bold text-slate-900">Academic Directorate Result Certificates</h2>
-              <p className="mt-1 text-sm text-slate-500">Export official result letters for published evaluations.</p>
+              <h2 className="text-xl font-bold text-slate-900">{t('Academic Directorate Result Certificates')}</h2>
+              <p className="mt-1 text-sm text-slate-500">{t('Export official result letters for published evaluations.')}</p>
             </div>
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                 <tr>
-                  <th className="px-3 py-3">Name</th>
-                  <th className="px-3 py-3">Role</th>
-                  <th className="px-3 py-3">Department</th>
-                  <th className="px-3 py-3">Final Score</th>
-                  <th className="px-3 py-3">Action</th>
+                  <th className="px-3 py-3">{t('Name')}</th>
+                  <th className="px-3 py-3">{t('Role')}</th>
+                  <th className="px-3 py-3">{t('Department')}</th>
+                  <th className="px-3 py-3">{t('Final Score')}</th>
+                  <th className="px-3 py-3">{t('Action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -235,16 +237,16 @@ const VicePresidentDashboard = () => {
                   <tr key={person.academicDirectorateId}>
                     <td className="px-3 py-3 font-medium">{displayName(person)}</td>
                     <td className="px-3 py-3 capitalize">{String(person.role || 'academic_directorate').replaceAll('_', ' ')}</td>
-                    <td className="px-3 py-3">{person.department_name || 'University-wide'}</td>
+                    <td className="px-3 py-3">{person.department_name || t('University-wide')}</td>
                     <td className="px-3 py-3 font-semibold">{Number(person.score || 0).toFixed(2)}</td>
                     <td className="px-3 py-3">
                       <button type="button" onClick={() => openCertificate(person)} className="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white">
-                        <Printer className="h-4 w-4" /> Export / Print
+                        <Printer className="h-4 w-4" /> {t('Export / Print')}
                       </button>
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-500">No published results are available. Complete evaluations, then calculate and publish results.</td></tr>
+                  <tr><td colSpan={5} className="px-3 py-8 text-center text-slate-500">{t('No published results are available. Complete evaluations, then calculate and publish results.')}</td></tr>
                 )}
               </tbody>
             </table>
@@ -259,37 +261,36 @@ const VicePresidentDashboard = () => {
             <OfficialLetterHeader office="Office of the Vice President" amharicOffice="የምክትል ፕሬዝዳንት ጽሕፈት ቤት" />
             <OfficialLetterMetadataFields value={letterMetadata} onChange={setLetterMetadata} />
             <OfficialLetterReference metadata={letterMetadata} />
-            <p className="mt-5 font-bold">To: {displayName(reportPerson)}</p>
-            <p className="mt-1 font-semibold">{reportPerson.department_name || 'Academic Directorate'}</p>
+            <p className="mt-5 font-bold">{t('To')}: {displayName(reportPerson, t)}</p>
+            <p className="mt-1 font-semibold">{reportPerson.department_name || t('Academic Directorate')}</p>
             <p className="mt-1 text-sm">
-              Role: Academic Director · Teaching status: {reportPerson.is_teaching ? 'Teaching' : 'Non-teaching'}
-              {reportPerson.username ? ` · Username: ${reportPerson.username}` : ''}
+              {t('Role')}: {t('Academic Director')} · {t('Teaching status')}: {reportPerson.is_teaching ? t('Teaching') : t('Non-teaching')}
+              {reportPerson.username ? ` · ${t('Username')}: ${reportPerson.username}` : ''}
             </p>
-            <h3 className="mt-4 text-base font-bold underline">Subject: To notify {letterMetadata.year} {letterMetadata.semester} efficiency evaluation result</h3>
+            <h3 className="mt-4 text-base font-bold underline">{t('Subject: To notify {year} {semester} efficiency evaluation result').replace('{year}', letterMetadata.year).replace('{semester}', letterMetadata.semester)}</h3>
             <p className="mt-2" lang="am">ጉዳዩ፡ የ{letterMetadata.year} {letterMetadata.semester} የአካዳሚክ ዳይሬክቶሬት የውጤታማነት ምዘና ውጤት</p>
-            <p className="mt-3">Dear Sir/Madam,</p>
+            <p className="mt-3">{t('Dear Sir/Madam,')}</p>
             <p className="mt-2">
-              As it is mentioned above in the subject, the Office of the Vice President would like to inform you of your
-              {' '}{letterMetadata.year} {letterMetadata.semester} efficiency evaluation result. The summary of the overall evaluation is given in the table below.
+              {t('As it is mentioned above in the subject, the Office of the Vice President would like to inform you of your {year} {semester} efficiency evaluation result. The summary of the overall evaluation is given in the table below.').replace('{year}', letterMetadata.year).replace('{semester}', letterMetadata.semester)}
             </p>
             <EvaluationScoreBreakdown
               isTeaching={reportPerson.is_teaching}
               studentScore={reportPerson.student_average}
               peerScore={reportPerson.peer_average}
               supervisorScore={reportPerson.supervisor_score ?? reportPerson.score}
-              supervisorLabel="Vice President"
+              supervisorLabel={t('Vice President')}
               finalScore={reportPerson.score}
             />
             <div className="mt-4">
-              <p className="font-bold">Remarks / አስተያየት</p>
-              <p className="mt-1"><strong>Strengths:</strong> {reportPerson.strengths || 'No additional strengths recorded.'}</p>
-              <p className="mt-1"><strong>Areas for improvement:</strong> {reportPerson.weaknesses || 'No additional improvement areas recorded.'}</p>
-              <p className="mt-1">We encourage you to maintain and further improve your performance in the coming academic year.</p>
+              <p className="font-bold">{t('Remarks')} / አስተያየት</p>
+              <p className="mt-1"><strong>{t('Strengths')}:</strong> {reportPerson.strengths || t('No additional strengths recorded.')}</p>
+              <p className="mt-1"><strong>{t('Areas for improvement')}:</strong> {reportPerson.weaknesses || t('No additional improvement areas recorded.')}</p>
+              <p className="mt-1">{t('We encourage you to maintain and further improve your performance in the coming academic year.')}</p>
             </div>
             <OfficialLetterEndorsements signerTitle="Vice President" organization="Mekdela Amba University" ccRecipients={['Human Resource Directorate', 'Educational Quality Improvement Directorate', reportPerson.department_name || 'Academic Directorate']} />
             <div className="mt-8 flex justify-end gap-3 print:hidden">
-              <button type="button" onClick={closeCertificate} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Close</button>
-              <button type="button" onClick={() => window.print()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Print Official Letter</button>
+              <button type="button" onClick={closeCertificate} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">{t('Close')}</button>
+              <button type="button" onClick={() => window.print()} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">{t('Print Official Letter')}</button>
             </div>
           </article>
         </div>

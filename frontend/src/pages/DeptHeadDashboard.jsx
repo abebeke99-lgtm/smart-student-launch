@@ -16,7 +16,6 @@ import {
   FaCalendarAlt,
 } from 'react-icons/fa';
 import {
-  AlertTriangle,
   ArrowRight,
   BookOpen,
   CalendarDays,
@@ -54,6 +53,7 @@ import EvaluationDeadlineBadge from '../components/EvaluationDeadlineBadge';
 import { DashboardSidebarContext } from '../context/DashboardSidebarContext';
 import CourseRegistration from './CourseRegistration';
 import { useConfirmation } from '../components/ConfirmationDialog';
+import { useUiText } from '../hooks/useUiText';
 
 const isLabAssistantRole = (role) => ['lab_assistant', 'ara', 'lab assistant', 'lab-assistant'].includes(String(role || '').trim().toLowerCase());
 const isLabCourse = (value) => value === true || value === 1 || ['true', '1'].includes(String(value || '').trim().toLowerCase());
@@ -66,6 +66,7 @@ const isDepartmentHeadEvaluationTargetRole = (role) => {
 const DeptHeadDashboard = () => {
   const { requestConfirmation, confirmationDialog } = useConfirmation();
   const { strings } = useContext(LanguageContext);
+  const t = useUiText();
   const { sidebarOpen: isSidebarOpen, setSidebarOpen: setIsSidebarOpen } = useContext(DashboardSidebarContext);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -77,11 +78,11 @@ const DeptHeadDashboard = () => {
     || currentUser?.fullName
     || [currentUser?.first_name, currentUser?.last_name].filter(Boolean).join(' ')
     || currentUser?.username
-    || 'Department Head';
+    || t('Department Head');
   const userDepartmentName = currentUser?.department_name
     || currentUser?.departmentName
     || currentUser?.department
-    || 'Department';
+    || t('Department');
   const today = new Date().toISOString().split('T')[0];
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -427,7 +428,7 @@ const DeptHeadDashboard = () => {
       });
       setStudentTrackingRows(Array.isArray(rows) ? rows : []);
       if (!rows || rows.length === 0) {
-        setTrackingMessage('No student evaluation rows matched the selected filters.');
+        setTrackingMessage(t('No student evaluation rows matched the selected filters.'));
       }
     } catch (error) {
       console.error('Student tracking fetch failed:', error);
@@ -449,7 +450,7 @@ const DeptHeadDashboard = () => {
       const rows = await evaluationApi.getDeptHeadPeerTracking({ target_instructor_id: peerTrackingInstructor });
       setPeerTrackingRows(Array.isArray(rows) ? rows : []);
       if (!rows || rows.length === 0) {
-        setTrackingMessage('No peer evaluation rows found for this instructor.');
+        setTrackingMessage(t('No peer evaluation rows found for this instructor.'));
       }
     } catch (error) {
       console.error('Peer tracking fetch failed:', error);
@@ -471,7 +472,7 @@ const DeptHeadDashboard = () => {
       const rows = await evaluationApi.getDeptHeadDeptHeadTracking({ instructor_id: deptTrackingInstructor });
       setDeptTrackingRows(Array.isArray(rows) ? rows : []);
       if (!rows || rows.length === 0) {
-        setTrackingMessage('No department head evaluation rows found for this instructor.');
+        setTrackingMessage(t('No department head evaluation rows found for this instructor.'));
       }
     } catch (error) {
       console.error('Dept head tracking fetch failed:', error);
@@ -489,12 +490,12 @@ const DeptHeadDashboard = () => {
       const result = await evaluationApi.sendReminder(evaluatorId
         ? { evaluator_id: evaluatorId, evaluation_type: evaluationType, department_id: departmentId }
         : { send_to_all_pending: true, department_id: departmentId });
-      toast.success(evaluatorId ? `Reminder sent successfully to ${name || 'the pending evaluator'}.` : 'Reminders sent to pending evaluators');
+      toast.success(evaluatorId ? `${t('Reminder sent successfully to')} ${name || t('the pending evaluator')}.` : t('Reminders sent to pending evaluators'));
       if (!evaluatorId && result?.telegram?.configured && !result.telegram.sent) {
-        toast.error(`Telegram delivery failed: ${result.telegram.error || 'check bot configuration and group access.'}`);
+        toast.error(`${t('Telegram delivery failed')}: ${result.telegram.error || t('check bot configuration and group access.')}`);
       }
     } catch (error) {
-      toast.error(error?.message || 'Unable to send evaluation reminder.');
+      toast.error(error?.message || t('Unable to send evaluation reminder.'));
     } finally {
       setReminderSending(false);
       setReminderTarget('');
@@ -511,7 +512,7 @@ const DeptHeadDashboard = () => {
     } catch (error) {
       if (error?.status !== 403) console.error('Unable to load dept head instructors:', error);
       setDeptInstructorsList([]);
-      if (error?.status !== 403) toast.error(error?.message || 'Unable to load instructors.');
+      if (error?.status !== 403) toast.error(error?.message || t('Unable to load instructors.'));
     } finally {
       setDeptEvalLoading(false);
     }
@@ -572,14 +573,14 @@ const DeptHeadDashboard = () => {
         general_comments: generalComments,
       };
       await evaluationApi.submitDeptHeadEvaluation(payload);
-      toast.success('Evaluation submitted successfully.');
+      toast.success(t('Evaluation submitted successfully.'));
       // update local list
       setDeptInstructorsList((current) => current.map((item) => (String(item.instructor_id) === String(selectedDeptInstructor.instructor_id) ? { ...item, evaluation_status: 'Submitted', total_score: totalScore, criteria_scores: criteriaScores } : item)));
       setShowDeptEvalModal(false);
       setDeptEvalCriteriaScores({});
     } catch (error) {
       console.error('Submit dept eval failed:', error);
-      toast.error(error?.message || 'Unable to submit Department Head evaluation.');
+      toast.error(error?.message || t('Unable to submit Department Head evaluation.'));
     } finally {
       setDeptEvalSubmitting(false);
     }
@@ -705,17 +706,6 @@ const DeptHeadDashboard = () => {
       && (assignmentCourseFilter === 'all' || String(assignment.course_id) === assignmentCourseFilter)
       && searchValue.includes(assignmentSearch.trim().toLowerCase());
   }), [assignmentAcademicYear, assignmentCourseFilter, assignmentSearch, courses, displayedAssignments, users]);
-  const assignmentConflictCount = useMemo(() => {
-    const instructorCredits = new Map();
-    departmentAssignments.forEach((assignment) => {
-      const instructorId = String(assignment.instructor_id || '');
-      const course = courses.find((item) => String(item.id) === String(assignment.course_id));
-      const creditHours = Number(assignment.creditHours || assignment.credit_hours || course?.creditHours || course?.credit_hours || 0);
-      instructorCredits.set(instructorId, (instructorCredits.get(instructorId) || 0) + creditHours);
-    });
-    return [...instructorCredits.values()].filter((creditHours) => creditHours > MAX_CREDIT_LOAD).length;
-  }, [courses, departmentAssignments]);
-
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState(null);
@@ -756,7 +746,7 @@ const DeptHeadDashboard = () => {
     const studentIdentifierText = studentEvalForm.studentId || studentEvalForm.studentGroup || '';
 
     if (!studentEvalForm.academicYear || !studentEvalForm.semester || !studentEvalForm.yearLevel || !studentEvalForm.courseId) {
-      toast.error('Please fill all required student evaluation dispatch fields.');
+      toast.error(t('Please fill all required student evaluation dispatch fields.'));
       return;
     }
 
@@ -781,7 +771,7 @@ const DeptHeadDashboard = () => {
       setTimeout(() => setFormNotification(''), 5000);
     } catch (error) {
       console.error('Unable to dispatch student evaluation:', error);
-      toast.error(error.message || 'Unable to send student evaluation.');
+      toast.error(error.message || t('Unable to send student evaluation.'));
     }
   };
 
@@ -806,7 +796,7 @@ const DeptHeadDashboard = () => {
       setTimeout(() => setFormNotification(''), 5000);
     } catch (error) {
       console.error('Unable to dispatch peer review:', error);
-      toast.error(error.message || 'Unable to dispatch peer review.');
+      toast.error(error.message || t('Unable to dispatch peer review.'));
     }
   };
 
@@ -833,7 +823,7 @@ const DeptHeadDashboard = () => {
 
   const handleConfirmAssignment = () => {
     if (!canSubmitAssignment()) {
-      toast.error('Please complete all assignment fields before confirming.');
+      toast.error(t('Please complete all assignment fields before confirming.'));
       return;
     }
 
@@ -843,7 +833,7 @@ const DeptHeadDashboard = () => {
   const handleFinalPublishSubmit = async () => {
     const { courseId, instructorId, section, semester, programType, yearLevel } = assignmentDraft;
     if (!courseId || !instructorId || !semester || !section) {
-      toast.error('Please select course, instructor, semester, and section.');
+      toast.error(t('Please select course, instructor, semester, and section.'));
       return;
     }
 
@@ -853,7 +843,7 @@ const DeptHeadDashboard = () => {
     const willExceed = currentLoad + creditHours > MAX_CREDIT_LOAD;
 
     if (willExceed) {
-      toast.error('Assignment failed validation. Fix the warning before publishing.');
+      toast.error(t('Assignment failed validation. Fix the warning before publishing.'));
       return;
     }
 
@@ -890,10 +880,10 @@ const DeptHeadDashboard = () => {
       setShowPublishModal(false);
       setAssignmentDraft({ courseId: '', instructorId: '', section: '', semester: '', programType: '', yearLevel: '' });
       setPublishTarget('both');
-      toast.success('Course assignment published successfully.');
+      toast.success(t('Course assignment published successfully.'));
     } catch (error) {
       console.error('Unable to submit assignment:', error);
-      toast.error(error.message || 'Unable to persist course assignment.');
+      toast.error(error.message || t('Unable to persist course assignment.'));
     }
   };
 
@@ -907,9 +897,9 @@ const DeptHeadDashboard = () => {
     try {
       await courseAssignmentApi.deleteAssignment(assignmentId);
       setAssignments((current) => current.filter((assignment) => String(assignment.id) !== String(assignmentId)));
-      toast.success('Course assignment deleted successfully.');
+      toast.success(t('Course assignment deleted successfully.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to delete course assignment.');
+      toast.error(error?.message || t('Unable to delete course assignment.'));
     }
   };
 
@@ -928,7 +918,7 @@ const DeptHeadDashboard = () => {
   const handleUpdateAssignment = async (event) => {
     event.preventDefault();
     if (!editingAssignment || Object.values(assignmentEditDraft).some((value) => !String(value).trim())) {
-      toast.error('Complete all assignment fields before saving.');
+      toast.error(t('Complete all assignment fields before saving.'));
       return;
     }
 
@@ -959,9 +949,9 @@ const DeptHeadDashboard = () => {
           : assignment
       )));
       setEditingAssignment(null);
-      toast.success('Course assignment updated successfully.');
+      toast.success(t('Course assignment updated successfully.'));
     } catch (error) {
-      toast.error(error?.message || 'Unable to update course assignment.');
+      toast.error(error?.message || t('Unable to update course assignment.'));
     } finally {
       setSavingAssignmentEdit(false);
     }
@@ -985,10 +975,10 @@ const DeptHeadDashboard = () => {
     try {
       await registrationApi.deleteUser(userId);
       setUsers((currentUsers) => currentUsers.filter((user) => user.id !== userId));
-      toast.success('User deleted successfully.');
+      toast.success(t('User deleted successfully.'));
     } catch (error) {
       console.error('Delete failed', error);
-      toast.error('Unable to delete the user.');
+      toast.error(t('Unable to delete the user.'));
     }
   };
 
@@ -997,7 +987,7 @@ const DeptHeadDashboard = () => {
     const name = courseForm.name.trim();
     const code = courseForm.code.trim();
     if (!name || (!courseForm.isLab && !code)) {
-      toast.error(courseForm.isLab ? 'Please enter the Lab Class name.' : 'Please enter the course name and course code.');
+      toast.error(courseForm.isLab ? t('Please enter the Lab Class name.') : t('Please enter the course name and course code.'));
       return;
     }
     const duplicate = courses.some((course) => (
@@ -1006,7 +996,7 @@ const DeptHeadDashboard = () => {
       && String(course.code || course.course_code || '').toLowerCase() === code.toLowerCase()
     ));
     if (duplicate) {
-      toast.error('This course code is already registered.');
+      toast.error(t('This course code is already registered.'));
       return;
     }
     const payload = {
@@ -1020,7 +1010,7 @@ const DeptHeadDashboard = () => {
       section: courseForm.isLab ? courseForm.section : null,
     };
     if (courseForm.isLab && !courseForm.section) {
-      toast.error('Please select a section for this Lab Class.');
+      toast.error(t('Please select a section for this Lab Class.'));
       return;
     }
     try {
@@ -1031,17 +1021,17 @@ const DeptHeadDashboard = () => {
         setCourses((current) => current.map((course) => (
           String(course.id) === String(editingCourseId) ? updatedCourse : course
         )));
-        toast.success('Course updated successfully.');
+        toast.success(t('Course updated successfully.'));
       } else {
         const result = await registrationApi.createCourse(payload);
         setCourses((current) => [normalizeCourseRecord({ ...payload, ...result, id: result.id }), ...current]);
-        toast.success('Course registered successfully.');
+        toast.success(t('Course registered successfully.'));
       }
       setEditingCourseId(null);
       setCourseForm({ name: '', code: '', yearLevel: '', semester: '', section: '', creditHours: '', isLab: false });
     } catch (error) {
       console.error('Unable to save course:', error);
-      toast.error(error?.message || (editingCourseId !== null ? 'Unable to update course.' : 'Unable to register course.'));
+      toast.error(error?.message || (editingCourseId !== null ? t('Unable to update course.') : t('Unable to register course.')));
     } finally {
       setCourseSaving(false);
     }
@@ -1085,16 +1075,16 @@ const DeptHeadDashboard = () => {
     try {
       await registrationApi.deleteCourse(course.id);
       setCourses((current) => current.filter((item) => String(item.id) !== String(course.id)));
-      toast.success('Lab Class deleted successfully.');
+      toast.success(t('Lab Class deleted successfully.'));
     } catch (error) {
       console.error('Unable to delete Lab Class:', error);
-      toast.error(error?.message || 'Unable to delete Lab Class.');
+      toast.error(error?.message || t('Unable to delete Lab Class.'));
     }
   };
 
   const handleCourseCsvUpload = async () => {
     if (!courseCsvFile) {
-      toast.error('Please choose a CSV file before uploading.');
+      toast.error(t('Please choose a CSV file before uploading.'));
       return;
     }
 
@@ -1107,9 +1097,9 @@ const DeptHeadDashboard = () => {
       const createdCourses = Array.isArray(result?.courses) ? result.courses : [];
       setCourses((current) => [...createdCourses.map(normalizeCourseRecord), ...current]);
       setCourseCsvFile(null);
-      toast.success(`Course upload complete. Created ${result?.created || createdCourses.length} course(s).`);
+      toast.success(`${t('Course upload complete. Created')} ${result?.created || createdCourses.length} ${t('course(s).')}`);
     } catch (error) {
-      toast.error(error?.message || 'Unable to upload courses.');
+      toast.error(error?.message || t('Unable to upload courses.'));
     } finally {
       setCourseCsvUploading(false);
     }
@@ -1125,25 +1115,25 @@ const DeptHeadDashboard = () => {
           <section className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Lab Classes</h2>
-                <p className="mt-1 text-sm text-slate-500">Add, edit, and remove Lab Classes and their assigned sections.</p>
+                <h2 className="text-xl font-bold text-slate-900">{t('Lab Classes')}</h2>
+                <p className="mt-1 text-sm text-slate-500">{t('Add, edit, and remove Lab Classes and their assigned sections.')}</p>
               </div>
-              <button type="button" onClick={addLabClass} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">Add Lab Class</button>
+              <button type="button" onClick={addLabClass} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">{t('Add Lab Class')}</button>
             </header>
             {departmentCoursesLoading ? (
-              <p className="rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500">Loading Lab Classes...</p>
+              <p className="rounded-lg bg-slate-50 p-6 text-center text-sm text-slate-500">{t('Loading Lab Classes...')}</p>
             ) : labClasses.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">No Lab Classes have been registered yet.</p>
+              <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">{t('No Lab Classes have been registered yet.')}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500">
                     <tr>
-                      <th className="px-4 py-3">Lab Class</th>
-                      <th className="px-4 py-3">Year</th>
-                      <th className="px-4 py-3">Semester</th>
-                      <th className="px-4 py-3">Section</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t('Lab Class')}</th>
+                      <th className="px-4 py-3">{t('Year')}</th>
+                      <th className="px-4 py-3">{t('Semester')}</th>
+                      <th className="px-4 py-3">{t('Section')}</th>
+                      <th className="px-4 py-3 text-right">{t('Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1152,11 +1142,11 @@ const DeptHeadDashboard = () => {
                         <td className="px-4 py-3 font-medium text-slate-900">{course.name || course.course_name}</td>
                         <td className="px-4 py-3 text-slate-600">{course.year_level || '—'}</td>
                         <td className="px-4 py-3 text-slate-600">{course.semester || '—'}</td>
-                        <td className="px-4 py-3 text-slate-600">{course.section ? `Section ${String(course.section).replace(/^section\\s+/i, '')}` : '—'}</td>
+                        <td className="px-4 py-3 text-slate-600">{course.section ? `${t('Section')} ${String(course.section).replace(/^section\\s+/i, '')}` : '—'}</td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => editCourse(course)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"><FaEdit aria-hidden="true" />Edit</button>
-                            <button type="button" onClick={() => void deleteLabClass(course)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100"><FaTrash aria-hidden="true" />Delete</button>
+                            <button type="button" onClick={() => editCourse(course)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-100"><FaEdit aria-hidden="true" />{t('Edit')}</button>
+                            <button type="button" onClick={() => void deleteLabClass(course)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100"><FaTrash aria-hidden="true" />{t('Delete')}</button>
                           </div>
                         </td>
                       </tr>
@@ -1174,70 +1164,70 @@ const DeptHeadDashboard = () => {
           <div className="space-y-6">
             <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 md:flex-row">
               <div>
-                <h4 className="text-sm font-semibold text-gray-800">Bulk Upload Courses (CSV)</h4>
-                <p className="text-xs text-gray-500">Upload CSV with headers: course_name, course_code, credit_hours, year_level, semester; optional: is_lab and section (section is required for Lab Classes).</p>
+                <h4 className="text-sm font-semibold text-gray-800">{t('Bulk Upload Courses (CSV)')}</h4>
+                <p className="text-xs text-gray-500">{t('Upload CSV with headers: course_name, course_code, credit_hours, year_level, semester; optional: is_lab and section (section is required for Lab Classes).')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <input type="file" accept=".csv" onChange={(event) => setCourseCsvFile(event.target.files?.[0] || null)} className="text-xs text-gray-500 file:mr-2 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white hover:file:bg-blue-700" />
                 <button type="button" onClick={handleCourseCsvUpload} disabled={courseCsvUploading || !courseCsvFile} className="rounded-lg bg-gray-800 px-4 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60">
-                  {courseCsvUploading ? 'Uploading...' : 'Upload CSV'}
+                  {courseCsvUploading ? t('Uploading...') : t('Upload CSV')}
                 </button>
               </div>
             </div>
             <form onSubmit={handleCourseSubmit} className="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <header className="flex flex-col items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/70 px-6 py-5 text-center sm:flex-row sm:text-left">
                 <div className="flex-1 sm:text-center">
-                  <h3 className="text-xl font-bold text-slate-900">{editingCourseId !== null ? 'Edit Course' : 'Course Registration'}</h3>
-                  <p className="mt-1 text-sm text-slate-500">Register and maintain courses for {currentUser?.department_name || currentUser?.department || 'your department'}.</p>
+                  <h3 className="text-xl font-bold text-slate-900">{editingCourseId !== null ? t('Edit Course') : t('Course Registration')}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{t('Register and maintain courses for')} {currentUser?.department_name || currentUser?.department || t('your department')}.</p>
                 </div>
-                <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label="Course type">
-                  <button type="button" aria-pressed={!courseForm.isLab} onClick={() => setCourseForm((current) => ({ ...current, isLab: false, section: '' }))} className={`rounded-md px-3 py-2 text-sm font-semibold transition ${!courseForm.isLab ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>Lecture Course</button>
-                  <button type="button" aria-pressed={courseForm.isLab} onClick={() => setCourseForm((current) => ({ ...current, isLab: true }))} className={`rounded-md px-3 py-2 text-sm font-semibold transition ${courseForm.isLab ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>Lab Class</button>
+                <div className="inline-flex shrink-0 rounded-lg border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label={t('Course type')}>
+                  <button type="button" aria-pressed={!courseForm.isLab} onClick={() => setCourseForm((current) => ({ ...current, isLab: false, section: '' }))} className={`rounded-md px-3 py-2 text-sm font-semibold transition ${!courseForm.isLab ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>{t('Lecture Course')}</button>
+                  <button type="button" aria-pressed={courseForm.isLab} onClick={() => setCourseForm((current) => ({ ...current, isLab: true }))} className={`rounded-md px-3 py-2 text-sm font-semibold transition ${courseForm.isLab ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>{t('Lab Class')}</button>
                 </div>
               </header>
               <fieldset className="min-w-0 px-6 py-5">
-                <legend className="mx-auto px-2 text-center text-base font-semibold text-slate-900">Course Details</legend>
-                <p className="mb-4 text-center text-sm text-slate-500">{courseForm.isLab ? 'Enter the Lab Class name.' : 'Enter the course name, code, and credit value.'}</p>
+                <legend className="mx-auto px-2 text-center text-base font-semibold text-slate-900">{t('Course Details')}</legend>
+                <p className="mb-4 text-center text-sm text-slate-500">{courseForm.isLab ? t('Enter the Lab Class name.') : t('Enter the course name, code, and credit value.')}</p>
                 <div className={`grid grid-cols-1 gap-4 ${courseForm.isLab ? '' : 'md:grid-cols-3'}`}>
                   <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Course Name <span className="text-red-600">*</span></span>
-                    <input value={courseForm.name} onChange={(event) => setCourseForm({ ...courseForm, name: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" placeholder={courseForm.isLab ? 'e.g. IT 3rd Year Lab or Biology Lab' : 'Enter course name'} required />
+                    <span className="text-sm font-medium text-slate-700">{t('Course Name')} <span className="text-red-600">*</span></span>
+                    <input value={courseForm.name} onChange={(event) => setCourseForm({ ...courseForm, name: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" placeholder={t(courseForm.isLab ? 'e.g. IT 3rd Year Lab or Biology Lab' : 'Enter course name')} required />
                   </label>
                   {!courseForm.isLab && <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Course Code <span className="text-red-600">*</span></span>
-                    <input value={courseForm.code} onChange={(event) => setCourseForm({ ...courseForm, code: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" placeholder="Enter course code" required />
+                    <span className="text-sm font-medium text-slate-700">{t('Course Code')} <span className="text-red-600">*</span></span>
+                    <input value={courseForm.code} onChange={(event) => setCourseForm({ ...courseForm, code: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" placeholder={t('Enter course code')} required />
                   </label>}
                   {!courseForm.isLab && <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Credit Hours / ECTS <span className="text-red-600">*</span></span>
+                    <span className="text-sm font-medium text-slate-700">{t('Credit Hours / ECTS')} <span className="text-red-600">*</span></span>
                     <input type="number" min="1" step="1" value={courseForm.creditHours} onChange={(event) => setCourseForm({ ...courseForm, creditHours: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" placeholder="3" required />
                   </label>}
                 </div>
               </fieldset>
               <fieldset className="min-w-0 border-t border-slate-200 px-6 py-5">
-                <legend className="mx-auto px-2 text-center text-base font-semibold text-slate-900">Offering</legend>
-                <p className="mb-4 text-center text-sm text-slate-500">Choose the academic year level and semester.</p>
+                <legend className="mx-auto px-2 text-center text-base font-semibold text-slate-900">{t('Offering')}</legend>
+                <p className="mb-4 text-center text-sm text-slate-500">{t('Choose the academic year level and semester.')}</p>
                 <div className={`grid grid-cols-1 gap-4 ${courseForm.isLab ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                   <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Year Level <span className="text-red-600">*</span></span>
+                    <span className="text-sm font-medium text-slate-700">{t('Year Level')} <span className="text-red-600">*</span></span>
                     <select value={courseForm.yearLevel} onChange={(event) => setCourseForm({ ...courseForm, yearLevel: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" required>
-                      <option value="">Select year level</option>
-                      {[1, 2, 3, 4, 5, 6, 7].map((year) => <option key={year} value={`Year ${year}`}>Year {year}</option>)}
+                      <option value="">{t('Select year level')}</option>
+                      {[1, 2, 3, 4, 5, 6, 7].map((year) => <option key={year} value={`Year ${year}`}>{t(`Year ${year}`)}</option>)}
                     </select>
                   </label>
                   <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Semester <span className="text-red-600">*</span></span>
+                    <span className="text-sm font-medium text-slate-700">{t('Semester')} <span className="text-red-600">*</span></span>
                     <select value={courseForm.semester} onChange={(event) => setCourseForm({ ...courseForm, semester: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" required>
-                      <option value="">Select semester</option>
-                      <option value="Semester I">Semester I</option>
-                      <option value="Semester II">Semester II</option>
+                      <option value="">{t('Select semester')}</option>
+                      <option value="Semester I">{t('Semester I')}</option>
+                      <option value="Semester II">{t('Semester II')}</option>
                     </select>
                   </label>
                   {courseForm.isLab && (
                     <label className="block">
-                      <span className="text-sm font-medium text-slate-700">Section <span className="text-red-600">*</span></span>
+                      <span className="text-sm font-medium text-slate-700">{t('Section')} <span className="text-red-600">*</span></span>
                       <select value={courseForm.section} onChange={(event) => setCourseForm({ ...courseForm, section: event.target.value })} className="mt-2 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">Select section</option>
-                        {'A B C D E F G H I J K L'.split(' ').map((section) => <option key={section} value={section}>Section {section}</option>)}
+                        <option value="">{t('Select section')}</option>
+                        {'A B C D E F G H I J K L'.split(' ').map((section) => <option key={section} value={section}>{t('Section')} {section}</option>)}
                       </select>
                     </label>
                   )}
@@ -1245,8 +1235,8 @@ const DeptHeadDashboard = () => {
               </fieldset>
               <footer className="flex justify-center border-t border-slate-200 bg-slate-50/70 px-6 py-4">
                 <div className="flex gap-3">
-                  {editingCourseId !== null && <button type="button" onClick={cancelCourseEdit} className="rounded-lg border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>}
-                  <button type="submit" disabled={courseSaving} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{courseSaving ? 'Saving...' : editingCourseId !== null ? 'Save Changes' : 'Register Course'}</button>
+                  {editingCourseId !== null && <button type="button" onClick={cancelCourseEdit} className="rounded-lg border border-slate-300 bg-white px-6 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">{t('Cancel')}</button>}
+                  <button type="submit" disabled={courseSaving} className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">{courseSaving ? t('Saving...') : editingCourseId !== null ? t('Save Changes') : t('Register Course')}</button>
                 </div>
               </footer>
             </form>
@@ -1256,24 +1246,24 @@ const DeptHeadDashboard = () => {
         return (
           <section className="space-y-6 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div>
-              <h2 className="text-xl font-semibold text-gray-800">Peer Evaluation</h2>
+              <h2 className="text-xl font-semibold text-gray-800">{t('Peer Evaluation')}</h2>
               <p className="mt-1 text-sm text-gray-500">
-                Evaluate instructors, lab assistants, the College Dean, and Academic Directorate colleagues in your department. This contributes to the 20% peer evaluation score.
+                {t('Evaluate instructors, lab assistants, the College Dean, and Academic Directorate colleagues in your department. This contributes to the 20% peer evaluation score.')}
               </p>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Colleague</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Role</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Deadline</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Colleague')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Role')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Deadline')}</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {peerTargetsLoading ? (
-                    <tr><td colSpan="4" className="px-4 py-8 text-center text-sm text-gray-500">Loading department peers...</td></tr>
+                    <tr><td colSpan="4" className="px-4 py-8 text-center text-sm text-gray-500">{t('Loading department peers...')}</td></tr>
                   ) : peerTargetsError ? (
                     <tr><td colSpan="4" className="px-4 py-8 text-center text-sm text-red-600">{peerTargetsError}</td></tr>
                   ) : peerTargets.length ? (
@@ -1285,7 +1275,7 @@ const DeptHeadDashboard = () => {
                         <td className="px-4 py-4 text-sm">
                           {target.is_evaluated ? (
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold text-emerald-600">✓ Evaluated ({target.total_score}/100)</span>
+                              <span className="font-semibold text-emerald-600">✓ {t('Evaluated')} ({target.total_score}/100)</span>
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1296,7 +1286,7 @@ const DeptHeadDashboard = () => {
                                 }}
                                 className="font-semibold text-blue-700 underline hover:text-blue-900"
                               >
-                                Edit
+                                {t('Edit')}
                               </button>
                             </div>
                           ) : target.id ? (
@@ -1310,16 +1300,16 @@ const DeptHeadDashboard = () => {
                               }}
                               className="font-semibold text-indigo-700 hover:text-indigo-900"
                             >
-                              ★ Evaluate
+                              ★ {t('Evaluate')}
                             </button>
                           ) : (
-                            <span className="text-xs text-gray-500">Not published yet</span>
+                            <span className="text-xs text-gray-500">{t('Not published yet')}</span>
                           )}
                         </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan="4" className="px-4 py-8 text-center text-sm text-gray-500">No eligible colleagues found in your department.</td></tr>
+                    <tr><td colSpan="4" className="px-4 py-8 text-center text-sm text-gray-500">{t('No eligible colleagues found in your department.')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1354,15 +1344,15 @@ const DeptHeadDashboard = () => {
                     key={key}
                     type="button"
                     onClick={() => openOverviewMetric(metric)}
-                    aria-label={`${label}: ${value}. Open related records`}
+                    aria-label={`${t(label)}: ${value}. ${t('Open related records')}`}
                     className={`group flex min-h-[92px] items-center gap-4 rounded-xl border px-4 py-3 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ieps-blue-500 focus-visible:ring-offset-2 ${theme}`}
                   >
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg text-white shadow-sm ${iconTheme}`}><Icon aria-hidden="true" /></span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold text-slate-600">{label}</span>
+                      <span className="block truncate text-xs font-semibold text-slate-600">{t(label)}</span>
                       <span className="mt-0.5 block text-xl font-bold tabular-nums text-slate-900" aria-live="polite">{overviewStatsLoading ? '...' : value}</span>
                       <span className={`mt-0.5 block truncate text-[10px] ${trendColor}`}>
-                        {overviewStatsLoading ? 'Updating' : trend === null || trend === undefined ? '→ No prior period baseline' : `${trendLabel}: ${trend > 0 ? '+' : ''}${trend}% vs prior 30 days`}
+                        {overviewStatsLoading ? t('Updating') : trend === null || trend === undefined ? `→ ${t('No prior period baseline')}` : `${t(trendLabel)}: ${trend > 0 ? '+' : ''}${trend}% ${t('vs prior 30 days')}`}
                       </span>
                     </span>
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-sm shadow-sm transition group-hover:translate-x-0.5" aria-hidden="true"><FaArrowRight /></span>
@@ -1376,8 +1366,8 @@ const DeptHeadDashboard = () => {
                 <div className="mb-3 flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Zap size={17} aria-hidden="true" /></span>
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Quick Actions</h2>
-                    <p className="text-xs text-slate-500">Common tasks and shortcuts</p>
+                    <h2 className="text-base font-bold text-slate-900">{t('Quick Actions')}</h2>
+                    <p className="text-xs text-slate-500">{t('Common tasks and shortcuts')}</p>
                   </div>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -1393,8 +1383,8 @@ const DeptHeadDashboard = () => {
                     >
                       <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${theme}`}><Icon aria-hidden="true" /></span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[11px] font-semibold text-slate-800">{label}</span>
-                        <span className="mt-0.5 block truncate text-[10px] text-slate-500">{description}</span>
+                        <span className="block truncate text-[11px] font-semibold text-slate-800">{t(label)}</span>
+                        <span className="mt-0.5 block truncate text-[10px] text-slate-500">{t(description)}</span>
                       </span>
                       <FaArrowRight className="shrink-0 text-[10px] text-slate-400 transition group-hover:translate-x-0.5" aria-hidden="true" />
                     </button>
@@ -1407,12 +1397,12 @@ const DeptHeadDashboard = () => {
                   <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Clock3 size={18} aria-hidden="true" /></span>
                     <div>
-                      <h2 className="text-base font-bold text-slate-900">Recent Activity</h2>
-                      <p className="text-xs text-slate-500">Latest department updates</p>
+                      <h2 className="text-base font-bold text-slate-900">{t('Recent Activity')}</h2>
+                      <p className="text-xs text-slate-500">{t('Latest department updates')}</p>
                     </div>
                   </div>
                   <button type="button" onClick={() => openOverviewMetric('evaluations')} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-50">
-                    View All <FaArrowRight aria-hidden="true" />
+                    {t('View All')} <FaArrowRight aria-hidden="true" />
                   </button>
                 </div>
                 {recentActivity.length ? (
@@ -1433,7 +1423,7 @@ const DeptHeadDashboard = () => {
                   </ol>
                 ) : (
                   <div className="flex min-h-24 items-center justify-center rounded-lg bg-slate-50 px-4 text-center text-xs text-slate-500">
-                    No recent activity recorded for this department.
+                    {t('No recent activity recorded for this department.')}
                   </div>
                 )}
               </section>
@@ -1457,7 +1447,7 @@ const DeptHeadDashboard = () => {
                 }`}
               >
                 <FaChalkboardTeacher />
-                Instructors
+                {t('Instructors')}
               </button>
               <button
                 type="button"
@@ -1470,7 +1460,7 @@ const DeptHeadDashboard = () => {
                 }`}
               >
                 <FaUsers />
-                Students
+                {t('Students')}
               </button>
               <button
                 type="button"
@@ -1483,7 +1473,7 @@ const DeptHeadDashboard = () => {
                 }`}
               >
                 <FaBook />
-                Courses
+                {t('Courses')}
               </button>
             </div>
 
@@ -1491,18 +1481,18 @@ const DeptHeadDashboard = () => {
             {viewDataTab === 'instructors' && (
               <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-slate-900">Department Instructors</h3>
-                  <p className="text-sm text-gray-500">Instructors loaded from the department database.</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t('Department Instructors')}</h3>
+                  <p className="text-sm text-gray-500">{t('Instructors loaded from the department database.')}</p>
                 </div>
                 {viewDataRows.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-600">No instructors registered for your department yet.</div>
+                  <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-600">{t('No instructors registered for your department yet.')}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
-                      <thead className="bg-gray-50 text-gray-600"><tr><th className="px-4 py-3 font-semibold">ID</th><th className="px-4 py-3 font-semibold">Name</th><th className="px-4 py-3 font-semibold">Phone Number</th><th className="px-4 py-3 font-semibold">Status</th></tr></thead>
+                      <thead className="bg-gray-50 text-gray-600"><tr><th className="px-4 py-3 font-semibold">{t('ID')}</th><th className="px-4 py-3 font-semibold">{t('Name')}</th><th className="px-4 py-3 font-semibold">{t('Phone Number')}</th><th className="px-4 py-3 font-semibold">{t('Status')}</th></tr></thead>
                       <tbody className="divide-y divide-gray-100">
                         {viewDataRows.map((instructor) => (
-                          <tr key={instructor.id || instructor.instructor_id} className="hover:bg-gray-50"><td className="px-4 py-3">{instructor.id || instructor.instructor_id}</td><td className="px-4 py-3 font-medium text-gray-800">{instructor.instructor_name || instructor.name || instructor.fullName || instructor.username || instructor.email}</td><td className="px-4 py-3">{instructor.phone_number || instructor.phoneNumber || '-'}</td><td className="px-4 py-3">Active</td></tr>
+                          <tr key={instructor.id || instructor.instructor_id} className="hover:bg-gray-50"><td className="px-4 py-3">{instructor.id || instructor.instructor_id}</td><td className="px-4 py-3 font-medium text-gray-800">{instructor.instructor_name || instructor.name || instructor.fullName || instructor.username || instructor.email}</td><td className="px-4 py-3">{instructor.phone_number || instructor.phoneNumber || '-'}</td><td className="px-4 py-3">{t('Active')}</td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -1521,25 +1511,25 @@ const DeptHeadDashboard = () => {
               <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
                 <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Department Courses</h3>
-                    <p className="text-sm text-gray-500">All courses assigned to your department.</p>
+                    <h3 className="text-lg font-semibold text-slate-900">{t('Department Courses')}</h3>
+                    <p className="text-sm text-gray-500">{t('All courses assigned to your department.')}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => void loadDepartmentCourses()}
                     className="inline-flex items-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
                   >
-                    Refresh courses
+                    {t('Refresh courses')}
                   </button>
                 </div>
 
                 {departmentCoursesLoading ? (
                   <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-600">
-                    Loading department courses…
+                    {t('Loading department courses…')}
                   </div>
                 ) : departmentCourses.length === 0 ? (
                   <div className="rounded-3xl border border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-600">
-                    No courses registered for your department yet.
+                    {t('No courses registered for your department yet.')}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1547,9 +1537,9 @@ const DeptHeadDashboard = () => {
                       <thead className="bg-gray-50 text-gray-600">
                         <tr>
                           <th className="px-4 py-3 font-semibold">#</th>
-                          <th className="px-4 py-3 font-semibold">Course Code</th>
-                          <th className="px-4 py-3 font-semibold">Course Name</th>
-                          <th className="px-4 py-3 font-semibold">Action</th>
+                          <th className="px-4 py-3 font-semibold">{t('Course Code')}</th>
+                          <th className="px-4 py-3 font-semibold">{t('Course Name')}</th>
+                          <th className="px-4 py-3 font-semibold">{t('Action')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1559,8 +1549,8 @@ const DeptHeadDashboard = () => {
                             <tr key={course.id || `${course.course_code}-${index}`} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-gray-700">{index + 1}</td>
                               <td className="px-4 py-3 text-gray-700">{normalized.code}</td>
-                              <td className="px-4 py-3 text-gray-700">{normalized.name}{isLabCourse(normalized.is_lab) ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Lab Class{normalized.section ? ` · Section ${normalized.section}` : ''}</span> : null}</td>
-                              <td className="px-4 py-3"><button type="button" onClick={() => editCourse(course)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"><FaEdit aria-hidden="true" />Edit</button></td>
+                              <td className="px-4 py-3 text-gray-700">{normalized.name}{isLabCourse(normalized.is_lab) ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{t('Lab Class')}{normalized.section ? ` · ${t('Section')} ${normalized.section}` : ''}</span> : null}</td>
+                              <td className="px-4 py-3"><button type="button" onClick={() => editCourse(course)} className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"><FaEdit aria-hidden="true" />{t('Edit')}</button></td>
                             </tr>
                           );
                         })}
@@ -1579,22 +1569,22 @@ const DeptHeadDashboard = () => {
               <div>
                 <div className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-500">
                   <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-50 text-blue-700"><BookOpen size={14} aria-hidden="true" /></span>
-                  Department Head <ArrowRight size={12} aria-hidden="true" /> Course Assignment Center
+                  {t('Department Head')} <ArrowRight size={12} aria-hidden="true" /> {t('Course Assignment Center')}
                 </div>
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900">Course Assignment Center</h2>
-                <p className="mt-1 text-sm text-slate-500">Assign instructors to courses and track conflicts from one place.</p>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">{t('Course Assignment Center')}</h2>
+                <p className="mt-1 text-sm text-slate-500">{t('Assign instructors to courses and track conflicts from one place.')}</p>
               </div>
               <div className="flex flex-wrap items-center gap-2.5">
                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 shadow-sm">
                   <CalendarDays size={15} className="text-blue-600" aria-hidden="true" />
-                  <span className="sr-only">Academic year</span>
+                  <span className="sr-only">{t('Academic year')}</span>
                   <select value={assignmentAcademicYear} onChange={(event) => setAssignmentAcademicYear(event.target.value)} className="max-w-36 bg-transparent font-semibold text-slate-700 outline-none">
-                    <option value="all">All Academic Years</option>
+                    <option value="all">{t('All Academic Years')}</option>
                     {assignmentAcademicYears.map((year) => <option key={year} value={year}>{year}</option>)}
                   </select>
                 </label>
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" role="group" aria-label="Filter assignments by status">
-                  {['all', 'active'].map((filter) => <button key={filter} type="button" aria-pressed={assignmentViewFilter === filter} onClick={() => setAssignmentViewFilter(filter)} className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition ${assignmentViewFilter === filter ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}>{filter}</button>)}
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1" role="group" aria-label={t('Filter assignments by status')}>
+                  {['all', 'active'].map((filter) => <button key={filter} type="button" aria-pressed={assignmentViewFilter === filter} onClick={() => setAssignmentViewFilter(filter)} className={`rounded-lg px-3 py-2 text-xs font-semibold capitalize transition ${assignmentViewFilter === filter ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-white'}`}>{t(filter)}</button>)}
                 </div>
                 <button
                   type="button"
@@ -1602,48 +1592,30 @@ const DeptHeadDashboard = () => {
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                 >
                   <Plus size={17} strokeWidth={2.75} aria-hidden="true" />
-                  Assign a Course
+                  {t('Assign a Course')}
                 </button>
               </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                { label: 'Assigned Courses', value: displayedAssignments.length, note: 'Total courses assigned', icon: BookOpen, iconTheme: 'bg-blue-600', cardTheme: 'border-blue-100 from-blue-50/80 to-white', color: 'text-blue-700' },
-                { label: 'Available Instructors', value: instructors.length, note: 'Ready for assignment', icon: UsersRound, iconTheme: 'bg-emerald-500', cardTheme: 'border-emerald-100 from-emerald-50/80 to-white', color: 'text-emerald-700' },
-                { label: 'Available Courses', value: courses.length, note: 'In your department', icon: GraduationCap, iconTheme: 'bg-purple-600', cardTheme: 'border-purple-100 from-purple-50/80 to-white', color: 'text-purple-700' },
-                { label: 'Conflict Warnings', value: assignmentConflictCount, note: 'Instructor loads over 12 credits', icon: AlertTriangle, iconTheme: 'bg-rose-500', cardTheme: 'border-rose-100 from-rose-50/80 to-white', color: 'text-rose-700' },
-              ].map(({ label, value, note, icon: Icon, iconTheme, cardTheme, color }) => (
-                <article key={label} className={`flex min-h-24 items-center gap-3 rounded-2xl border bg-gradient-to-br p-4 shadow-sm ${cardTheme}`}>
-                  <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-sm ${iconTheme}`}><Icon size={19} aria-hidden="true" /></span>
-                  <div className="min-w-0 flex-1">
-                    <h3 className={`truncate text-xs font-semibold ${color}`}>{label}</h3>
-                    <p className="mt-0.5 text-2xl font-bold tabular-nums text-slate-900">{value}</p>
-                    <p className="truncate text-[10px] text-slate-500">{note}</p>
-                  </div>
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/90 text-slate-500 shadow-sm" aria-hidden="true"><ArrowRight size={14} /></span>
-                </article>
-              ))}
             </div>
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-4 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><BookOpen size={19} aria-hidden="true" /></span>
                   <div>
-                    <h3 className="text-base font-bold text-slate-900">Assigned Course Log</h3>
-                    <p className="text-xs text-slate-500">View and manage all course assignments in the department.</p>
+                    <h3 className="text-base font-bold text-slate-900">{t('Assigned Course Log')}</h3>
+                    <p className="text-xs text-slate-500">{t('View and manage all course assignments in the department.')}</p>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <label className="relative min-w-0 sm:w-64">
                     <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                    <span className="sr-only">Search courses, instructors, and sections</span>
-                    <input value={assignmentSearch} onChange={(event) => setAssignmentSearch(event.target.value)} placeholder="Search courses, instructors, sections..." className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
+                    <span className="sr-only">{t('Search courses, instructors, and sections')}</span>
+                    <input value={assignmentSearch} onChange={(event) => setAssignmentSearch(event.target.value)} placeholder={t('Search courses, instructors, sections...')} className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
                   </label>
                   <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
                     <Filter size={14} className="text-slate-400" aria-hidden="true" />
-                    <span className="sr-only">Filter by course</span>
+                    <span className="sr-only">{t('Filter by course')}</span>
                     <select value={assignmentCourseFilter} onChange={(event) => setAssignmentCourseFilter(event.target.value)} className="max-w-36 bg-transparent font-semibold text-slate-700 outline-none">
-                      <option value="all">All Courses</option>
+                      <option value="all">{t('All Courses')}</option>
                       {courses.map((course) => <option key={course.id} value={String(course.id)}>{course.code || course.course_code || course.name || course.course_name}</option>)}
                     </select>
                   </label>
@@ -1654,21 +1626,21 @@ const DeptHeadDashboard = () => {
                   <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="w-12 px-4 py-3">#</th>
-                      <th className="px-4 py-3">Course</th>
-                      <th className="px-4 py-3">Instructor</th>
-                      <th className="px-4 py-3">Section</th>
-                      <th className="px-4 py-3">Semester</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Actions</th>
+                      <th className="px-4 py-3">{t('Course')}</th>
+                      <th className="px-4 py-3">{t('Instructor')}</th>
+                      <th className="px-4 py-3">{t('Section')}</th>
+                      <th className="px-4 py-3">{t('Semester')}</th>
+                      <th className="px-4 py-3">{t('Status')}</th>
+                      <th className="px-4 py-3">{t('Actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredAssignments.length ? filteredAssignments.map((assignment, index) => {
                       const course = courses.find((item) => String(item.id) === String(assignment.course_id));
                       const instructor = users.find((item) => String(item.id) === String(assignment.instructor_id));
-                      const courseCode = course?.code || course?.course_code || assignment.course_code || 'Course';
-                      const courseName = course?.name || course?.course_name || assignment.course_name || 'Course details';
-                      const instructorName = instructor?.fullName || assignment.instructor_name || `Instructor ${assignment.instructor_id || ''}`;
+                      const courseCode = course?.code || course?.course_code || assignment.course_code || t('Course');
+                      const courseName = course?.name || course?.course_name || assignment.course_name || t('Course details');
+                      const instructorName = instructor?.fullName || assignment.instructor_name || `${t('Instructor')} ${assignment.instructor_id || ''}`;
                       const initials = instructorName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('') || 'I';
                       const badgeThemes = ['bg-blue-100 text-blue-700', 'bg-purple-100 text-purple-700', 'bg-cyan-100 text-cyan-700', 'bg-amber-100 text-amber-700', 'bg-pink-100 text-pink-700'];
                       const badgeTheme = badgeThemes[index % badgeThemes.length];
@@ -1678,35 +1650,35 @@ const DeptHeadDashboard = () => {
                           <td className="px-4 py-3">
                             <div className="flex min-w-0 items-center gap-2.5">
                               <span className={`flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 text-[9px] font-bold ${badgeTheme}`}>{courseCode}</span>
-                              <span className="min-w-0"><span className="block truncate font-semibold text-slate-800">{courseName}</span><span className="block text-[10px] text-slate-400">{assignment.program_type || 'Department course'}</span></span>
+                              <span className="min-w-0"><span className="block truncate font-semibold text-slate-800">{courseName}</span><span className="block text-[10px] text-slate-400">{assignment.program_type || t('Department course')}</span></span>
                             </div>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[9px] font-bold text-blue-700">{initials || <UserRound size={14} aria-hidden="true" />}</span>
-                              <span className="min-w-0"><span className="block truncate font-semibold text-slate-700">{instructorName}</span><span className="block text-[10px] text-slate-400">Instructor</span></span>
+                              <span className="min-w-0"><span className="block truncate font-semibold text-slate-700">{instructorName}</span><span className="block text-[10px] text-slate-400">{t('Instructor')}</span></span>
                             </div>
                           </td>
                           <td className="px-4 py-3 font-medium text-slate-600">{assignment.section || '—'}</td>
                           <td className="px-4 py-3 font-medium text-slate-600">{assignment.semester || '—'}</td>
-                          <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Assigned</span></td>
+                          <td className="px-4 py-3"><span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />{t('Assigned')}</span></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
-                              <button type="button" onClick={() => openAssignmentEditor(assignment)} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Pencil size={12} aria-hidden="true" />Edit</button>
-                              <button type="button" onClick={() => handleDeleteAssignment(assignment.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"><Trash2 size={12} aria-hidden="true" />Delete</button>
+                              <button type="button" onClick={() => openAssignmentEditor(assignment)} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5 font-semibold text-blue-700 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"><Pencil size={12} aria-hidden="true" />{t('Edit')}</button>
+                              <button type="button" onClick={() => handleDeleteAssignment(assignment.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"><Trash2 size={12} aria-hidden="true" />{t('Delete')}</button>
                             </div>
                           </td>
                         </tr>
                       );
                     }) : (
-                      <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">{displayedAssignments.length ? 'No assignments match the selected filters.' : 'No course assignments have been created for this department yet.'}</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">{displayedAssignments.length ? t('No assignments match the selected filters.') : t('No course assignments have been created for this department yet.')}</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
               <div className="flex flex-col gap-2 border-t border-slate-100 px-4 py-3 text-[10px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                <span>Showing {filteredAssignments.length ? 1 : 0}–{filteredAssignments.length} of {filteredAssignments.length} results</span>
-                <span>{assignmentAcademicYear === 'all' ? 'All academic years' : `Academic year ${assignmentAcademicYear}`}</span>
+                <span>{t('Showing')} {filteredAssignments.length ? 1 : 0}–{filteredAssignments.length} {t('of')} {filteredAssignments.length} {t('results')}</span>
+                <span>{assignmentAcademicYear === 'all' ? t('All academic years') : `${t('Academic year')} ${assignmentAcademicYear}`}</span>
               </div>
             </section>
           </div>
@@ -1720,31 +1692,31 @@ const DeptHeadDashboard = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">INSTRUCTOR</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">DEADLINE</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">ACTION</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('INSTRUCTOR')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('DEADLINE')}</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('ACTION')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {deptEvalLoading ? (
                     <tr>
-                      <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-500">Loading instructors…</td>
+                      <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-500">{t('Loading instructors…')}</td>
                     </tr>
                   ) : deptInstructorsList.length ? (
                     deptInstructorsList.map((inst) => (
                       <tr key={inst.instructor_id}>
-                        <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900"><span className="block">{inst.instructor_name || inst.fullName || inst.username}</span>{isLabAssistantRole(inst.role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Lab Assistant (ARA)</span>}</td>
+                        <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900"><span className="block">{inst.instructor_name || inst.fullName || inst.username}</span>{isLabAssistantRole(inst.role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{t('Lab Assistant (ARA)')}</span>}</td>
                         <td className="px-6 py-4 whitespace-nowrap"><EvaluationDeadlineBadge value={inst} /></td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {String((inst.evaluation_status || '').toLowerCase()) === 'submitted' ? (
                             <div className="flex items-center gap-3">
-                              <span className="text-green-600 font-medium">✓ Evaluated ({inst.total_score}/100)</span>
+                              <span className="text-green-600 font-medium">✓ {t('Evaluated')} ({inst.total_score}/100)</span>
                               <button
                                 type="button"
                                 onClick={() => handleViewEvaluation(inst)}
                                 className="text-ieps-blue-600 hover:text-ieps-blue-900 font-semibold text-sm underline"
                               >
-                                View Details
+                                {t('View Details')}
                               </button>
                             </div>
                           ) : (
@@ -1753,7 +1725,7 @@ const DeptHeadDashboard = () => {
                               onClick={() => handleOpenEvaluationModal(inst)}
                               className="flex items-center gap-1.5 text-indigo-700 hover:text-indigo-900 font-semibold"
                             >
-                              ★ Evaluate
+                              ★ {t('Evaluate')}
                             </button>
                           )}
                         </td>
@@ -1761,7 +1733,7 @@ const DeptHeadDashboard = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-500">No instructors found for your department.</td>
+                      <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-500">{t('No instructors found for your department.')}</td>
                     </tr>
                   )}
                 </tbody>
@@ -1808,18 +1780,18 @@ const DeptHeadDashboard = () => {
           <div className="space-y-6">
             <div className="flex flex-col gap-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Evaluation Tracking</h2>
-                <p className="mt-1 text-sm text-gray-500">Monitor pending and completed evaluation forms.</p>
+                <h2 className="text-xl font-semibold text-gray-900">{t('Evaluation Tracking')}</h2>
+                <p className="mt-1 text-sm text-gray-500">{t('Monitor pending and completed evaluation forms.')}</p>
               </div>
               <button type="button" onClick={() => sendEvaluationReminder()} disabled={reminderSending} className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                {reminderSending && reminderTarget === 'all' ? 'Sending…' : '🔔 Send Reminder to All Pending'}
+                {reminderSending && reminderTarget === 'all' ? t('Sending…') : `🔔 ${t('Send Reminder to All Pending')}`}
               </button>
             </div>
 
             <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap gap-3">
                 {['student', 'peer', 'dept_head'].map((view) => {
-                  const label = view === 'student' ? 'Student' : view === 'peer' ? 'Peer' : 'Dept Head';
+                  const label = t(view === 'student' ? 'Student' : view === 'peer' ? 'Peer' : 'Dept Head');
                   const isSelected = trackingView === view;
                   return (
                     <button
@@ -1837,35 +1809,35 @@ const DeptHeadDashboard = () => {
 
             <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
               {trackingView === 'student' && (
-                <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label="Filter student evaluations">
-                  {[{ value: 'all', label: 'All students' }, { value: 'Pending', label: 'Pending only' }].map(({ value, label }) => <button key={value} type="button" aria-pressed={trackingStatusFilter === value} onClick={() => setTrackingStatusFilter(value)} className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${trackingStatusFilter === value ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{label}</button>)}
+                <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label={t('Filter student evaluations')}>
+                  {[{ value: 'all', label: 'All students' }, { value: 'Pending', label: 'Pending only' }].map(({ value, label }) => <button key={value} type="button" aria-pressed={trackingStatusFilter === value} onClick={() => setTrackingStatusFilter(value)} className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${trackingStatusFilter === value ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>{t(label)}</button>)}
                 </div>
               )}
               <div className="grid gap-4 md:grid-cols-3">
                 {trackingView === 'student' && (
                   <>
                     <label className="space-y-2 text-sm text-gray-700">
-                      <span className="font-semibold">Year Level</span>
+                      <span className="font-semibold">{t('Year Level')}</span>
                       <select value={trackingFilters.year_level} onChange={(e) => handleTrackingFilterChange('year_level')(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        {['All Years', '1st Year (Freshman)', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', '7th Year'].map((option) => <option key={option} value={option}>{option}</option>)}
+                        {['All Years', '1st Year (Freshman)', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', '7th Year'].map((option) => <option key={option} value={option}>{t(option)}</option>)}
                       </select>
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
-                      <span className="font-semibold">Section</span>
+                      <span className="font-semibold">{t('Section')}</span>
                       <select value={trackingFilters.section} onChange={(e) => handleTrackingFilterChange('section')(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        {['All Sections', 'Section A', 'Section B', 'Section C', 'Section D', 'Section E', 'Section F', 'Section G', 'Section H', 'Section I', 'Section J', 'Section K', 'Section L'].map((option) => <option key={option} value={option}>{option}</option>)}
+                        {['All Sections', 'Section A', 'Section B', 'Section C', 'Section D', 'Section E', 'Section F', 'Section G', 'Section H', 'Section I', 'Section J', 'Section K', 'Section L'].map((option) => <option key={option} value={option}>{t(option)}</option>)}
                       </select>
                     </label>
                     <label className="space-y-2 text-sm text-gray-700">
-                      <span className="font-semibold">Program Type</span>
+                      <span className="font-semibold">{t('Program Type')}</span>
                       <select value={trackingFilters.program_type} onChange={(e) => handleTrackingFilterChange('program_type')(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        {['All Programs', 'Regular', 'Extension', 'Summer'].map((option) => <option key={option} value={option}>{option}</option>)}
+                        {['All Programs', 'Regular', 'Extension', 'Summer'].map((option) => <option key={option} value={option}>{t(option)}</option>)}
                       </select>
                     </label>
                     <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
-                      <span className="font-semibold">Target Instructor</span>
+                      <span className="font-semibold">{t('Target Instructor')}</span>
                       <select value={trackingFilters.instructor_id} onChange={(e) => handleTrackingFilterChange('instructor_id')(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        <option value="">Select Instructor</option>
+                        <option value="">{t('Select Instructor')}</option>
                         {trackingInstructors.map((ins) => <option key={ins.instructor_id || ins.id} value={ins.instructor_id || ins.id}>{ins.instructor_name || ins.full_name || ins.username}</option>)}
                       </select>
                     </label>
@@ -1875,9 +1847,9 @@ const DeptHeadDashboard = () => {
                 {trackingView === 'peer' && (
                   <>
                     <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
-                      <span className="font-semibold">Target Instructor</span>
+                      <span className="font-semibold">{t('Target Instructor')}</span>
                       <select value={peerTrackingInstructor} onChange={(e) => setPeerTrackingInstructor(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        <option value="">Select Instructor</option>
+                        <option value="">{t('Select Instructor')}</option>
                         {departmentStaff.map((staff) => <option key={staff.id} value={staff.id}>{staff.fullName || staff.full_name || `${staff.first_name || ''} ${staff.last_name || ''}`.trim() || staff.username}</option>)}
                       </select>
                     </label>
@@ -1888,9 +1860,9 @@ const DeptHeadDashboard = () => {
                 {trackingView === 'dept_head' && (
                   <>
                     <label className="space-y-2 text-sm text-gray-700 md:col-span-2">
-                      <span className="font-semibold">Instructor</span>
+                      <span className="font-semibold">{t('Instructor')}</span>
                       <select value={deptTrackingInstructor} onChange={(e) => setDeptTrackingInstructor(e.target.value)} className="w-full rounded-2xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-ieps-blue-500 focus:ring-2 focus:ring-ieps-blue-100">
-                        <option value="">Select Instructor</option>
+                        <option value="">{t('Select Instructor')}</option>
                         {instructors.map((ins) => <option key={ins.id} value={ins.id}>{ins.fullName}</option>)}
                       </select>
                     </label>
@@ -1900,7 +1872,7 @@ const DeptHeadDashboard = () => {
               </div>
 
               <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="text-sm text-slate-500">{trackingMessage || 'Use filters and click Fetch Data to display evaluation tracking rows.'}</p>
+                <p className="text-sm text-slate-500">{trackingMessage || t('Use filters and click Fetch Data to display evaluation tracking rows.')}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -1910,7 +1882,7 @@ const DeptHeadDashboard = () => {
                   }}
                   className="inline-flex items-center justify-center rounded-2xl bg-ieps-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-ieps-blue-700"
                 >
-                  {trackingLoading ? 'Fetching…' : 'Fetch Data'}
+                  {trackingLoading ? t('Fetching…') : t('Fetch Data')}
                 </button>
               </div>
             </div>
@@ -1921,9 +1893,9 @@ const DeptHeadDashboard = () => {
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <th className="px-4 py-3 font-semibold">#</th>
-                      <th className="px-4 py-3 font-semibold">Student</th>
-                      <th className="px-4 py-3 font-semibold">Status</th>
-                      <th className="px-4 py-3 font-semibold">Action</th>
+                      <th className="px-4 py-3 font-semibold">{t('Student')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Status')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1933,14 +1905,14 @@ const DeptHeadDashboard = () => {
                         <td className="px-4 py-4 text-gray-700">{row.student_name}</td>
                         <td className="px-4 py-4 font-medium">
                           <span className={row.status === 'Submitted' ? 'text-green-600' : 'text-red-600'}>
-                            {row.status === 'Submitted' ? '🟢 Submitted' : '🔴 Pending'}
+                            {row.status === 'Submitted' ? `🟢 ${t('Submitted')}` : `🔴 ${t('Pending')}`}
                           </span>
                         </td>
-                        <td className="px-4 py-4">{row.status === 'Submitted' ? <span className="text-xs font-semibold text-gray-400">Done</span> : <button type="button" onClick={() => sendEvaluationReminder(row.evaluator_id, 'student', row.student_name)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending && reminderTarget === String(row.evaluator_id) ? 'Sending…' : '🔔 Remind'}</button>}</td>
+                        <td className="px-4 py-4">{row.status === 'Submitted' ? <span className="text-xs font-semibold text-gray-400">{t('Done')}</span> : <button type="button" onClick={() => sendEvaluationReminder(row.evaluator_id, 'student', row.student_name)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending && reminderTarget === String(row.evaluator_id) ? t('Sending…') : `🔔 ${t('Remind')}`}</button>}</td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">No student evaluation tracking results available.</td>
+                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">{t('No student evaluation tracking results available.')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -1952,9 +1924,9 @@ const DeptHeadDashboard = () => {
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
                       <th className="px-4 py-3 font-semibold">#</th>
-                      <th className="px-4 py-3 font-semibold">Peer Instructor</th>
-                      <th className="px-4 py-3 font-semibold">Status</th>
-                      <th className="px-4 py-3 font-semibold">Action</th>
+                      <th className="px-4 py-3 font-semibold">{t('Peer Instructor')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Status')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1964,14 +1936,14 @@ const DeptHeadDashboard = () => {
                         <td className="px-4 py-4 text-gray-700">{row.peer_instructor}</td>
                         <td className="px-4 py-4 font-medium">
                           <span className={row.status === 'Submitted' ? 'text-green-600' : 'text-red-600'}>
-                            {row.status === 'Submitted' ? '🟢 Submitted' : '🔴 Pending'}
+                            {row.status === 'Submitted' ? `🟢 ${t('Submitted')}` : `🔴 ${t('Pending')}`}
                           </span>
                         </td>
-                        <td className="px-4 py-4">{row.status === 'Submitted' ? <span className="text-xs font-semibold text-gray-400">Done</span> : <button type="button" onClick={() => sendEvaluationReminder(row.evaluator_id, 'peer', row.peer_instructor)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending && reminderTarget === String(row.evaluator_id) ? 'Sending…' : '🔔 Remind'}</button>}</td>
+                        <td className="px-4 py-4">{row.status === 'Submitted' ? <span className="text-xs font-semibold text-gray-400">{t('Done')}</span> : <button type="button" onClick={() => sendEvaluationReminder(row.evaluator_id, 'peer', row.peer_instructor)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending && reminderTarget === String(row.evaluator_id) ? t('Sending…') : `🔔 ${t('Remind')}`}</button>}</td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">No peer evaluation tracking results available.</td>
+                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">{t('No peer evaluation tracking results available.')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -1982,10 +1954,10 @@ const DeptHeadDashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200 text-left text-sm">
                   <thead className="bg-slate-50 text-slate-600">
                     <tr>
-                      <th className="px-4 py-3 font-semibold">Instructor Name</th>
-                      <th className="px-4 py-3 font-semibold">Department Head Score</th>
-                      <th className="px-4 py-3 font-semibold">Evaluation Status</th>
-                      <th className="px-4 py-3 font-semibold">Action</th>
+                      <th className="px-4 py-3 font-semibold">{t('Instructor Name')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Department Head Score')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Evaluation Status')}</th>
+                      <th className="px-4 py-3 font-semibold">{t('Action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1994,11 +1966,11 @@ const DeptHeadDashboard = () => {
                         <td className="px-4 py-4 text-gray-700">{row.instructor_name}</td>
                         <td className="px-4 py-4 text-gray-700">{row.score ?? 0} / 100</td>
                         <td className="px-4 py-4">{statusBadge(row.status)}</td>
-                        <td className="px-4 py-4">{String(row.status).toLowerCase() === 'submitted' ? <span className="text-xs font-semibold text-gray-400">Done</span> : <button type="button" onClick={() => sendEvaluationReminder(row.user_id, 'dept_head', row.instructor_name)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending ? 'Sending…' : '🔔 Remind'}</button>}</td>
+                        <td className="px-4 py-4">{String(row.status).toLowerCase() === 'submitted' ? <span className="text-xs font-semibold text-gray-400">{t('Done')}</span> : <button type="button" onClick={() => sendEvaluationReminder(row.user_id, 'dept_head', row.instructor_name)} disabled={reminderSending} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">{reminderSending ? t('Sending…') : `🔔 ${t('Remind')}`}</button>}</td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">No department head evaluation tracking results available.</td>
+                        <td colSpan={4} className="px-4 py-10 text-center text-gray-500">{t('No department head evaluation tracking results available.')}</td>
                       </tr>
                     )}
                   </tbody>
@@ -2013,15 +1985,15 @@ const DeptHeadDashboard = () => {
           <div id="department-reports" className="space-y-6 print:space-y-4">
             <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between print:hidden">
               <div>
-                <h2 className="text-xl font-bold text-slate-900">Department Final Results</h2>
-                <p className="mt-1 text-sm text-slate-500">Calculate and publish the final results for department instructors.</p>
+                <h2 className="text-xl font-bold text-slate-900">{t('Department Final Results')}</h2>
+                <p className="mt-1 text-sm text-slate-500">{t('Calculate and publish the final results for department instructors.')}</p>
               </div>
               <button type="button" onClick={publishFinalResults} disabled={trackingLoading} className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
-                {trackingLoading ? 'Publishing…' : 'Calculate & Publish Final Results'}
+                {trackingLoading ? t('Publishing…') : t('Calculate & Publish Final Results')}
               </button>
             </div>
             {trackingMessage ? <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800 print:hidden">{trackingMessage}</div> : null}
-            <ResultCertificateActions title="Department Result Certificates" />
+            <ResultCertificateActions title={t('Department Result Certificates')} />
           </div>
         );
       default:
@@ -2030,7 +2002,7 @@ const DeptHeadDashboard = () => {
   };
 
   if (!currentUser || !currentUser.username) {
-    return <div className="p-8 text-center text-gray-500">Loading department head profile...</div>;
+    return <div className="p-8 text-center text-gray-500">{t('Loading department head profile...')}</div>;
   }
 
   return (
@@ -2097,13 +2069,13 @@ const DeptHeadDashboard = () => {
         }
       `}</style>
 
-      {isSidebarOpen && <button type="button" aria-label="Close sidebar" className="dept-head-sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+      {isSidebarOpen && <button type="button" aria-label={t('Close sidebar')} className="dept-head-sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className="dept-head-dashboard-shell">
         <aside className={`dept-head-sidebar h-full flex-shrink-0 print:hidden lg:sticky lg:top-0 lg:self-start ${isSidebarOpen ? 'is-open' : ''}`}>
           <div className="dept-head-sidebar-header flex items-center gap-2 rounded-lg">
             <FaShieldAlt className="shrink-0" />
-            <h3 className="min-w-0 text-sm font-semibold">Department Head</h3>
+            <h3 className="min-w-0 text-sm font-semibold">{t('Department Head')}</h3>
           </div>
           <div className="space-y-2">
             {sidebarItems.map(({ key, label, icon: Icon }) => {
@@ -2137,11 +2109,11 @@ const DeptHeadDashboard = () => {
             </div>
           )}
           {activeTab === 'overview' && (
-            <section className="dept-head-welcome-banner mb-5 print:hidden" aria-label="Department overview welcome">
+            <section className="dept-head-welcome-banner mb-5 print:hidden" aria-label={t('Department overview welcome')}>
               <div className="relative z-10 min-w-0">
-                <p className="text-[11px] font-medium tracking-wide text-slate-600">Good morning,</p>
-                <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Welcome, {userFullName}</h1>
-                <p className="mt-1 text-xs text-slate-600">Department Head <span className="px-1">•</span> {userDepartmentName}</p>
+                <p className="text-[11px] font-medium tracking-wide text-slate-600">{t('Good morning,')}</p>
+                <h1 className="mt-1 text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{t('Welcome')}, {userFullName}</h1>
+                <p className="mt-1 text-xs text-slate-600">{t('Department Head')} <span className="px-1">•</span> {userDepartmentName}</p>
                 <span className="mt-3 inline-flex items-center gap-2 rounded-full bg-blue-700 px-3 py-1 text-[10px] font-medium text-white shadow-sm">
                   <FaCalendarAlt aria-hidden="true" /> Apr 10, 2026&nbsp;&nbsp; 10:42 AM
                 </span>
@@ -2153,8 +2125,8 @@ const DeptHeadDashboard = () => {
                   <span className="absolute -bottom-1 left-1/2 h-5 w-16 -translate-x-1/2 rounded-t-lg bg-blue-600/90" />
                 </div>
                 <p className="max-w-28 text-center text-[11px] font-medium leading-4 text-blue-700">
-                  Better Evaluation
-                  <span className="block font-bold">for a Brighter Future</span>
+                  {t('Better Evaluation')}
+                  <span className="block font-bold">{t('for a Brighter Future')}</span>
                   <span className="mx-auto mt-2 block h-px w-8 bg-blue-300" />
                 </p>
               </div>
@@ -2208,35 +2180,35 @@ const DeptHeadDashboard = () => {
               <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
                 <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-lg">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Dispatch Peer-to-Peer Evaluation</h3>
+                    <h3 className="text-lg font-semibold">{t('Dispatch Peer-to-Peer Evaluation')}</h3>
                     <button type="button" onClick={() => setShowInstructorModal(false)} className="text-gray-500">✕</button>
                   </div>
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <label className="text-sm text-gray-600"><span className="mb-1 block font-medium">Evaluating Instructor</span>
+                    <label className="text-sm text-gray-600"><span className="mb-1 block font-medium">{t('Evaluating Instructor')}</span>
                       <select value={instructorEvalForm.evaluatorId} onChange={(e) => setInstructorEvalForm({ ...instructorEvalForm, evaluatorId: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                        <option value="">Select evaluator</option>
+                        <option value="">{t('Select evaluator')}</option>
                         {instructors.map((ins) => <option key={ins.id} value={ins.id}>{ins.fullName}</option>)}
                       </select>
                     </label>
-                    <label className="text-sm text-gray-600"><span className="mb-1 block font-medium">Target Instructor</span>
+                    <label className="text-sm text-gray-600"><span className="mb-1 block font-medium">{t('Target Instructor')}</span>
                       <select value={instructorEvalForm.targetInstructorId} onChange={(e) => setInstructorEvalForm({ ...instructorEvalForm, targetInstructorId: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                        <option value="">Select target</option>
+                        <option value="">{t('Select target')}</option>
                         {instructors.map((ins) => <option key={ins.id} value={ins.id}>{ins.fullName}</option>)}
                       </select>
                     </label>
-                    <label className="text-sm text-gray-600 md:col-span-2"><span className="mb-1 block font-medium">Evaluation criteria / notes</span>
-                      <input value={instructorEvalForm.criteria} onChange={(e) => setInstructorEvalForm({ ...instructorEvalForm, criteria: e.target.value })} placeholder="e.g., teaching quality, feedback, etc." className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
+                    <label className="text-sm text-gray-600 md:col-span-2"><span className="mb-1 block font-medium">{t('Evaluation criteria / notes')}</span>
+                      <input value={instructorEvalForm.criteria} onChange={(e) => setInstructorEvalForm({ ...instructorEvalForm, criteria: e.target.value })} placeholder={t('e.g., teaching quality, feedback, etc.')} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm" />
                     </label>
                     <label className="text-sm text-gray-600"><span className="mb-1 block font-medium">Semester</span>
                       <select value={instructorEvalForm.semester} onChange={(e) => setInstructorEvalForm({ ...instructorEvalForm, semester: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                        <option>Semester I</option>
-                        <option>Semester II</option>
+                        <option value="Semester I">{t('Semester I')}</option>
+                        <option value="Semester II">{t('Semester II')}</option>
                       </select>
                     </label>
                   </div>
                   <div className="mt-5 flex justify-end gap-3">
-                    <button type="button" onClick={() => setShowInstructorModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Cancel</button>
-                    <button type="button" onClick={handleSendInstructorEvaluation} className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white">Send Evaluation</button>
+                    <button type="button" onClick={() => setShowInstructorModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">{t('Cancel')}</button>
+                    <button type="button" onClick={handleSendInstructorEvaluation} className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white">{t('Send Evaluation')}</button>
                   </div>
                 </div>
               </div>
@@ -2259,21 +2231,21 @@ const DeptHeadDashboard = () => {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" role="presentation">
                 <form onSubmit={handleUpdateAssignment} className="w-full max-w-xl space-y-5 rounded-2xl bg-white p-6 shadow-2xl">
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-900">Edit course assignment</h3>
-                    <p className="mt-1 text-sm text-slate-500">Update the course, instructor, or student group for this assignment.</p>
+                    <h3 className="text-xl font-semibold text-slate-900">{t('Edit course assignment')}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{t('Update the course, instructor, or student group for this assignment.')}</p>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="text-sm font-medium text-slate-700">
-                      Course
+                      {t('Course')}
                       <select value={assignmentEditDraft.course_id} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, course_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
-                        <option value="">Select course</option>
+                        <option value="">{t('Select course')}</option>
                         {courses.map((course) => <option key={course.id} value={course.id}>{course.code || course.course_code} · {course.name || course.course_name}</option>)}
                       </select>
                     </label>
                     <label className="text-sm font-medium text-slate-700">
-                      Instructor
+                      {t('Instructor')}
                       <select value={assignmentEditDraft.instructor_id} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, instructor_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
-                        <option value="">Select instructor</option>
+                        <option value="">{t('Select instructor')}</option>
                         {assignmentInstructors.map((instructor) => {
                           const instructorId = instructor.instructor_id || instructor.id;
                           return <option key={instructorId} value={instructorId}>{instructor.full_name || instructor.instructor_name || instructor.name || instructor.username}</option>;
@@ -2281,37 +2253,37 @@ const DeptHeadDashboard = () => {
                       </select>
                     </label>
                     <label className="text-sm font-medium text-slate-700">
-                      Program type
+                      {t('Program type')}
                       <select value={assignmentEditDraft.program_type} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, program_type: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
                         {programTypeOptions.map((programType) => <option key={programType} value={programType}>{programType}</option>)}
                       </select>
                     </label>
                     <label className="text-sm font-medium text-slate-700">
-                      Year level
+                      {t('Year level')}
                       <select value={assignmentEditDraft.year_level} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, year_level: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
-                        <option value="">Select year level</option>
+                        <option value="">{t('Select year level')}</option>
                         {yearLevelOptions.map((yearLevel) => <option key={yearLevel} value={yearLevel}>{yearLevel}</option>)}
                       </select>
                     </label>
                     <label className="text-sm font-medium text-slate-700">
-                      Semester
+                      {t('Semester')}
                       <select value={assignmentEditDraft.semester} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, semester: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
-                        <option value="">Select semester</option>
+                        <option value="">{t('Select semester')}</option>
                         <option value="I">I</option>
                         <option value="II">II</option>
                       </select>
                     </label>
                     <label className="text-sm font-medium text-slate-700">
-                      Section
+                      {t('Section')}
                       <select value={assignmentEditDraft.section} onChange={(event) => setAssignmentEditDraft((current) => ({ ...current, section: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2">
-                        <option value="">Select section</option>
+                        <option value="">{t('Select section')}</option>
                         {'A B C D E F G H I J K L'.split(' ').map((section) => <option key={section} value={section}>{section}</option>)}
                       </select>
                     </label>
                   </div>
                   <div className="flex justify-end gap-3">
-                    <button type="button" onClick={() => setEditingAssignment(null)} disabled={savingAssignmentEdit} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">Cancel</button>
-                    <button type="submit" disabled={savingAssignmentEdit} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingAssignmentEdit ? 'Saving…' : 'Save changes'}</button>
+                    <button type="button" onClick={() => setEditingAssignment(null)} disabled={savingAssignmentEdit} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50">{t('Cancel')}</button>
+                    <button type="submit" disabled={savingAssignmentEdit} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingAssignmentEdit ? t('Saving…') : t('Save changes')}</button>
                   </div>
                 </form>
               </div>
@@ -2322,8 +2294,8 @@ const DeptHeadDashboard = () => {
                 <div className="w-full max-w-3xl rounded-3xl bg-white p-6 shadow-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold">Course Assignment</h3>
-                      <p className="text-sm text-gray-500">Step {assignmentStep} of 2</p>
+                      <h3 className="text-lg font-semibold">{t('Course Assignment')}</h3>
+                      <p className="text-sm text-gray-500">{t('Step')} {assignmentStep} {t('of')} 2</p>
                     </div>
                     <button type="button" onClick={() => { setShowAssignModal(false); setAssignmentStep(1); }} className="text-gray-500">✕</button>
                   </div>
@@ -2332,16 +2304,16 @@ const DeptHeadDashboard = () => {
                     {assignmentStep === 1 ? (
                       <>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Course</span>
+                          <span className="mb-1 block font-medium">{t('Course')}</span>
                           <select value={assignmentDraft.courseId} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, courseId: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select course</option>
+                            <option value="">{t('Select course')}</option>
                             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name} · {c.creditHours}cr</option>)}
                           </select>
                         </label>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Instructor</span>
+                          <span className="mb-1 block font-medium">{t('Instructor')}</span>
                           <select value={assignmentDraft.instructorId} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, instructorId: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select instructor</option>
+                            <option value="">{t('Select instructor')}</option>
                             {assignmentInstructors.map((ins) => <option key={ins.id || ins.instructor_id} value={ins.id || ins.instructor_id}>{ins.instructor_name || ins.fullName || ins.name || ins.username || ins.email}</option>)}
                           </select>
                         </label>
@@ -2349,31 +2321,31 @@ const DeptHeadDashboard = () => {
                     ) : (
                       <>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Program type</span>
+                          <span className="mb-1 block font-medium">{t('Program type')}</span>
                           <select value={assignmentDraft.programType} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, programType: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select Program Type</option>
-                            {programTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                            <option value="">{t('Select Program Type')}</option>
+                            {programTypeOptions.map((type) => <option key={type} value={type}>{t(type)}</option>)}
                           </select>
                         </label>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Year level</span>
+                          <span className="mb-1 block font-medium">{t('Year level')}</span>
                           <select value={assignmentDraft.yearLevel} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, yearLevel: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select Year Level</option>
-                            {yearLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
+                            <option value="">{t('Select Year Level')}</option>
+                            {yearLevelOptions.map((level) => <option key={level} value={level}>{t(level)}</option>)}
                           </select>
                         </label>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Semester</span>
+                          <span className="mb-1 block font-medium">{t('Semester')}</span>
                           <select value={assignmentDraft.semester} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, semester: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select semester</option>
+                            <option value="">{t('Select semester')}</option>
                             <option value="I">I</option>
                             <option value="II">II</option>
                           </select>
                         </label>
                         <label className="text-sm text-gray-600">
-                          <span className="mb-1 block font-medium">Section</span>
+                          <span className="mb-1 block font-medium">{t('Section')}</span>
                           <select value={assignmentDraft.section} onChange={(e) => setAssignmentDraft({ ...assignmentDraft, section: e.target.value })} className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                            <option value="">Select Section</option>
+                            <option value="">{t('Select Section')}</option>
                             {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((sec) => (
                               <option key={sec} value={sec}>{sec}</option>
                             ))}
@@ -2385,7 +2357,7 @@ const DeptHeadDashboard = () => {
 
                   <div className="mt-5 flex justify-between gap-3">
                     {assignmentStep === 2 ? (
-                      <button type="button" onClick={() => setAssignmentStep(1)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Back</button>
+                      <button type="button" onClick={() => setAssignmentStep(1)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">{t('Back')}</button>
                     ) : <div />}
                     {assignmentStep === 1 ? (
                       <button
@@ -2394,7 +2366,7 @@ const DeptHeadDashboard = () => {
                         disabled={!assignmentDraft.courseId || !assignmentDraft.instructorId}
                         className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                       >
-                        Continue
+                        {t('Continue')}
                       </button>
                     ) : (
                       <button
@@ -2403,13 +2375,13 @@ const DeptHeadDashboard = () => {
                         disabled={!canSubmitAssignment()}
                         className="rounded-xl bg-ieps-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                       >
-                        Confirm Assignment
+                        {t('Confirm Assignment')}
                       </button>
                     )}
                   </div>
 
                   <div className="mt-5 text-sm">
-                    <p className="font-semibold">Checks</p>
+                    <p className="font-semibold">{t('Checks')}</p>
                     <div className="mt-2 space-y-1">
                       <div>
                         {assignmentDraft.instructorId && assignmentDraft.courseId ? (
@@ -2418,20 +2390,20 @@ const DeptHeadDashboard = () => {
                             const credit = Number(course?.creditHours || 0);
                             const load = getInstructorAssignedCredits(assignmentDraft.instructorId);
                             const ok = load + credit <= MAX_CREDIT_LOAD;
-                            return (<div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{ok ? '✅ Load available' : '❌ Exceeds Max Credit Load Limit'}</div>);
+                            return (<div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm ${ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>{ok ? `✅ ${t('Load available')}` : `❌ ${t('Exceeds Max Credit Load Limit')}`}</div>);
                           })()
-                        ) : <div className="text-gray-500">Select course & instructor to run checks</div>}
+                        ) : <div className="text-gray-500">{t('Select course & instructor to run checks')}</div>}
                       </div>
                       <div>
                         {assignmentDraft.instructorId && assignmentDraft.courseId ? (
-                          (() => checkQualification(assignmentDraft.instructorId, assignmentDraft.courseId) ? <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-amber-50 text-amber-700">⚠️ Qualification warning only</div> : <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-red-50 text-red-700">❌ Qualification / Field mismatch</div>)()
+                          (() => checkQualification(assignmentDraft.instructorId, assignmentDraft.courseId) ? <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-amber-50 text-amber-700">⚠️ {t('Qualification warning only')}</div> : <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm bg-red-50 text-red-700">❌ {t('Qualification / Field mismatch')}</div>)()
                         ) : null}
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-5 flex justify-end gap-3">
-                    <button type="button" onClick={() => setShowAssignModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">Cancel</button>
+                    <button type="button" onClick={() => setShowAssignModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700">{t('Cancel')}</button>
                   </div>
                 </div>
               </div>
@@ -2440,32 +2412,32 @@ const DeptHeadDashboard = () => {
             {showPublishModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                 <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-                  <h3 className="border-b border-gray-200 pb-2 text-lg font-bold text-gray-900">Confirm & Publish</h3>
-                  <p className="mt-3 text-xs text-gray-500">Select who should receive notification and visibility for this course assignment.</p>
+                  <h3 className="border-b border-gray-200 pb-2 text-lg font-bold text-gray-900">{t('Confirm & Publish')}</h3>
+                  <p className="mt-3 text-xs text-gray-500">{t('Select who should receive notification and visibility for this course assignment.')}</p>
                   <div className="mt-5 space-y-3">
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 transition hover:bg-sky-50/50">
                       <input type="radio" name="publishTarget" value="both" checked={publishTarget === 'both'} onChange={(e) => setPublishTarget(e.target.value)} className="text-sky-600 focus:ring-sky-500" />
-                      <span className="text-sm font-semibold text-gray-800">Publish to Both (Student & Instructor)</span>
+                      <span className="text-sm font-semibold text-gray-800">{t('Publish to Both (Student & Instructor)')}</span>
                     </label>
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 transition hover:bg-sky-50/50">
                       <input type="radio" name="publishTarget" value="student" checked={publishTarget === 'student'} onChange={(e) => setPublishTarget(e.target.value)} className="text-sky-600 focus:ring-sky-500" />
-                      <span className="text-sm font-semibold text-gray-800">Publish to Student Only</span>
+                      <span className="text-sm font-semibold text-gray-800">{t('Publish to Student Only')}</span>
                     </label>
                     <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-gray-200 p-3 transition hover:bg-sky-50/50">
                       <input type="radio" name="publishTarget" value="instructor" checked={publishTarget === 'instructor'} onChange={(e) => setPublishTarget(e.target.value)} className="text-sky-600 focus:ring-sky-500" />
-                      <span className="text-sm font-semibold text-gray-800">Publish to Instructor Only</span>
+                      <span className="text-sm font-semibold text-gray-800">{t('Publish to Instructor Only')}</span>
                     </label>
                   </div>
                   <div className="mt-6 flex items-center justify-between gap-3 pt-2">
-                    <button type="button" onClick={() => setShowPublishModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">Back</button>
-                    <button type="button" onClick={handleFinalPublishSubmit} className="rounded-xl bg-sky-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-sky-950">Confirm</button>
+                    <button type="button" onClick={() => setShowPublishModal(false)} className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">{t('Back')}</button>
+                    <button type="button" onClick={handleFinalPublishSubmit} className="rounded-xl bg-sky-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-sky-950">{t('Confirm')}</button>
                   </div>
                 </div>
               </div>
             )}
           </> : null}
 
-          {loadingData ? <div className="rounded-3xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm">Syncing dashboard data from the API…</div> : renderContent()}
+          {loadingData ? <div className="rounded-3xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm">{t('Syncing dashboard data from the API…')}</div> : renderContent()}
           <PeerEvaluationModal
             open={showPeerEvaluationModal}
             onClose={() => {

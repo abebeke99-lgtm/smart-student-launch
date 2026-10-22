@@ -1,8 +1,18 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 import { API_URL } from "../../config";
+import { translateUiText } from "../locales/uiText";
 
 const API_BASE_URL = API_URL;
+const getPreferredLanguage = () => {
+  if (typeof window === "undefined") return "en";
+  try {
+    return window.localStorage.getItem("ipes-language") === "am" ? "am" : "en";
+  } catch {
+    return "en";
+  }
+};
+
 export const DASHBOARD_DATA_UPDATED_EVENT = "ipes-dashboard-data-updated";
 export const EVALUATION_WINDOW_UPDATED_EVENT = "ipes-evaluation-window-updated";
 
@@ -62,7 +72,10 @@ axios.interceptors.response.use(
         window.sessionStorage.removeItem(key);
       });
       toast.error(
-        "System is currently unavailable. Please contact the administrator.",
+        translateUiText(
+          "System is currently unavailable. Please contact the administrator.",
+          getPreferredLanguage(),
+        ),
         { id: "system-unavailable" },
       );
       window.dispatchEvent(new Event("ipes-system-disabled"));
@@ -81,20 +94,21 @@ axios.interceptors.response.use(
   },
 );
 
-const getMessageText = (message) => {
-  if (typeof message === "string") return message;
+const getMessageText = (message, language = "en") => {
+  if (typeof message === "string") return translateUiText(message, language);
   if (Array.isArray(message)) {
     return message
-      .map((entry) => getMessageText(entry))
+      .map((entry) => getMessageText(entry, language))
       .filter(Boolean)
       .join(" ");
   }
   if (message && typeof message === "object") {
+    if (language === "am" && typeof message.am === "string") return message.am;
     if (typeof message.en === "string") return message.en;
     if (typeof message.am === "string") return message.am;
     if (typeof message.message === "string") return message.message;
     return Object.values(message)
-      .map((entry) => getMessageText(entry))
+      .map((entry) => getMessageText(entry, language))
       .filter(Boolean)
       .join(" ");
   }
@@ -133,19 +147,34 @@ const request = async (path, options = {}) => {
 
     return responseData;
   } catch (error) {
+    const language = getPreferredLanguage();
     const errorPayload = error?.response?.data;
     const errorMessage = getMessageText(
       errorPayload?.message ||
         errorPayload?.error ||
         error.message ||
-        "Request failed.",
+        translateUiText("Request failed.", language),
+      language,
     );
-    const errorDetail = getMessageText(errorPayload?.error);
+    const errorDetail = getMessageText(errorPayload?.error, language);
+    const validationDetails = Array.isArray(errorPayload?.errors)
+      ? errorPayload.errors
+          .map(({ field, message: fieldMessage }) => {
+            const detail = getMessageText(fieldMessage, language);
+            return detail ? `${field ? `${field}: ` : ""}${detail}` : "";
+          })
+          .filter(Boolean)
+          .join(" ")
+      : "";
     const message =
-      errorDetail && errorDetail !== errorMessage
-        ? `${errorMessage} ${errorDetail}`
-        : errorMessage;
-    const normalizedError = new Error(message || "Request failed.");
+      [
+        errorMessage,
+        errorDetail && errorDetail !== errorMessage ? errorDetail : "",
+        validationDetails,
+      ]
+        .filter(Boolean)
+        .join(" ");
+    const normalizedError = new Error(message || translateUiText("Request failed.", language));
     normalizedError.status = error?.response?.status || 500;
     normalizedError.response = error?.response;
     throw normalizedError;
@@ -169,10 +198,7 @@ export const authApi = {
   forgotPassword: (identifier) =>
     request("/auth/forgot-password", {
       method: "POST",
-      data: {
-        username: identifier,
-        email: identifier,
-      },
+      data: { email: identifier },
     }),
   verifyOtp: (payload) =>
     request("/auth/verify-otp", { method: "POST", data: payload }),

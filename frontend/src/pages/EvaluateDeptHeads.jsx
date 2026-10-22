@@ -3,6 +3,7 @@ import { FaStar } from 'react-icons/fa';
 import { deanApi } from '../services/api';
 import InstructorEvaluationCriteriaModal from '../components/InstructorEvaluationCriteriaModal';
 import EvaluationDeadlineBadge from '../components/EvaluationDeadlineBadge';
+import { useUiText } from '../hooks/useUiText';
 
 const competencyGroups = [
   {
@@ -71,6 +72,7 @@ const amharicCriteria = {
 };
 
 const EvaluateDeptHeads = () => {
+  const t = useUiText();
   const [deptHeads, setDeptHeads] = useState([]);
   const [selectedHead, setSelectedHead] = useState(null);
   const [modalMode, setModalMode] = useState('edit');
@@ -89,7 +91,7 @@ const EvaluateDeptHeads = () => {
       setDeptHeads(Array.isArray(data) ? data : []);
     } catch (loadError) {
       setDeptHeads([]);
-      setError(loadError?.message || 'Unable to load pending Department Head evaluations.');
+      setError(loadError?.message || t('Unable to load pending Department Head evaluations.'));
     } finally {
       setLoading(false);
     }
@@ -125,11 +127,11 @@ const EvaluateDeptHeads = () => {
         generalComments: generalComments || strengths,
         weaknesses: improvements,
       });
-      setMessage('Department Head evaluation submitted successfully.');
+      setMessage(t('Department Head evaluation submitted successfully.'));
       setSelectedHead(null);
       await loadDepartmentHeads();
     } catch (submitError) {
-      setError(submitError?.message || 'Unable to submit Department Head evaluation.');
+      setError(submitError?.message || t('Unable to submit Department Head evaluation.'));
     } finally {
       setSubmitting(false);
     }
@@ -155,15 +157,15 @@ const EvaluateDeptHeads = () => {
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="mb-6"><h2 className="text-xl font-bold text-slate-900">Evaluate Department Heads</h2><p className="mt-1 text-sm text-slate-500">Select a Department Head to open the evaluation criteria.</p></div>
+      <div className="mb-6"><h2 className="text-xl font-bold text-slate-900">{t('Evaluate Department Heads')}</h2><p className="mt-1 text-sm text-slate-500">{t('Select a Department Head to open the evaluation criteria.')}</p></div>
       {message ? <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div> : null}
       {error ? <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
-      {loading ? <p className="py-8 text-center text-sm text-slate-500">Loading pending evaluations...</p> : (
+      {loading ? <p className="py-8 text-center text-sm text-slate-500">{t('Loading pending evaluations...')}</p> : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Department Head / Instructor</th><th className="px-4 py-3">Deadline</th><th className="px-4 py-3">Action</th></tr></thead>
+            <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">{t('Department Head / Instructor')}</th><th className="px-4 py-3">{t('Deadline')}</th><th className="px-4 py-3">{t('Action')}</th></tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {deptHeads.length ? deptHeads.map((head) => <tr key={head.dept_head_id || head.instructorId}><td className="px-4 py-4 font-medium text-slate-900">{head.full_name || head.name || head.email}<span className="block text-xs font-normal text-slate-500">{head.department_name || head.department || 'Department'}</span></td><td className="px-4 py-4"><EvaluationDeadlineBadge value={head} /></td><td className="px-4 py-4">{isCompleted(head) ? <div className="flex flex-wrap items-center gap-3"><span className="font-semibold text-emerald-700">Evaluated ({Number(head.score || 0).toFixed(1)}%)</span><button type="button" onClick={() => openEvaluation(head, 'view')} className="font-semibold text-blue-700 underline hover:text-blue-900">View Details</button></div> : <button type="button" onClick={() => openEvaluation(head)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"><FaStar className="h-3 w-3" /> Evaluate</button>}</td></tr>) : <tr><td colSpan="3" className="px-4 py-8 text-center text-sm text-slate-500">No Department Head evaluations found.</td></tr>}
+              {deptHeads.length ? deptHeads.map((head) => <tr key={head.dept_head_id || head.instructorId}><td className="px-4 py-4 font-medium text-slate-900">{head.full_name || head.name || head.email}<span className="block text-xs font-normal text-slate-500">{head.department_name || head.department || t('Department')}</span></td><td className="px-4 py-4"><EvaluationDeadlineBadge value={head} /></td><td className="px-4 py-4">{isCompleted(head) ? <div className="flex flex-wrap items-center gap-3"><span className="font-semibold text-emerald-700">{t('Evaluated')} ({Number(head.score || 0).toFixed(1)}%)</span><button type="button" onClick={() => openEvaluation(head, 'view')} className="font-semibold text-blue-700 underline hover:text-blue-900">{t('View Details')}</button></div> : <button type="button" onClick={() => openEvaluation(head)} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"><FaStar className="h-3 w-3" /> {t('Evaluate')}</button>}</td></tr>) : <tr><td colSpan="3" className="px-4 py-8 text-center text-sm text-slate-500">{t('No Department Head evaluations found.')}</td></tr>}
             </tbody>
           </table>
         </div>

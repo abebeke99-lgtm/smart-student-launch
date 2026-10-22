@@ -1,4 +1,3 @@
-import { useContext } from 'react';
 import {
   Shield,
   Info,
@@ -11,10 +10,10 @@ import {
   BarChart3,
   Zap,
 } from 'lucide-react';
-import { LanguageContext } from '../context/LanguageContext';
+import { useUiText } from '../hooks/useUiText';
 
 const About = () => {
-  const { language } = useContext(LanguageContext);
+  const t = useUiText();
 
   const content = {
     hero: {
@@ -221,12 +220,12 @@ const About = () => {
                     {getIcon(icon, 'h-5 w-5 text-white')}
                   </div>
                   <h1 className="text-lg font-bold tracking-tight">
-                    {language === 'en' ? title.titleEn : title.titleAm}
+                    {t(title.titleEn)}
                   </h1>
                 </div>
                 <div className="p-5">
                   <p className="text-xs leading-relaxed text-slate-600">
-                    {language === 'en' ? text.contentEn || text.subtitleEn : text.contentAm || text.subtitleAm}
+                    {t(text.contentEn || text.subtitleEn)}
                   </p>
                 </div>
               </article>
@@ -239,7 +238,7 @@ const About = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
             <h2 className="text-3xl font-bold text-blue-900 md:text-4xl">
-              {language === 'en' ? content.coreValues.titleEn : content.coreValues.titleAm}
+              {t(content.coreValues.titleEn)}
             </h2>
           </div>
 
@@ -255,10 +254,10 @@ const About = () => {
                   </div>
                 </div>
                 <h3 className="mb-3 text-center text-xl font-bold text-blue-900">
-                  {language === 'en' ? value.titleEn : value.titleAm}
+                  {t(value.titleEn)}
                 </h3>
                 <p className="text-center text-sm leading-relaxed text-slate-600">
-                  {language === 'en' ? value.descriptionEn : value.descriptionAm}
+                  {t(value.descriptionEn)}
                 </p>
               </div>
             ))}
@@ -270,7 +269,7 @@ const About = () => {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-10 text-center">
             <h2 className="text-3xl font-bold text-blue-900 md:text-4xl">
-              {language === 'en' ? content.keyBenefits.titleEn : content.keyBenefits.titleAm}
+              {t(content.keyBenefits.titleEn)}
             </h2>
           </div>
 
@@ -285,16 +284,16 @@ const About = () => {
                     {getIcon(stakeholder.icon)}
                   </div>
                   <h3 className="text-xl font-bold">
-                    {language === 'en' ? stakeholder.roleEn : stakeholder.roleAm}
+                    {t(stakeholder.roleEn)}
                   </h3>
                 </div>
 
                 <div className="p-6">
                   <ul className="space-y-4">
-                    {(language === 'en' ? stakeholder.benefitsEn : stakeholder.benefitsAm).map((benefit, bidx) => (
+                    {stakeholder.benefitsEn.map((benefit, bidx) => (
                       <li key={bidx} className="flex items-start gap-3">
                         <span className="mt-2 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-600" />
-                        <span className="text-sm leading-relaxed text-slate-700">{benefit}</span>
+                        <span className="text-sm leading-relaxed text-slate-700">{t(benefit)}</span>
                       </li>
                     ))}
                   </ul>
@@ -310,12 +309,12 @@ const About = () => {
           <div className="mb-8 flex items-center gap-3">
             <div className="h-1.5 w-12 rounded-full bg-blue-600" />
             <h2 className="text-3xl font-bold text-blue-900 md:text-4xl">
-              {language === 'en' ? content.objectives.titleEn : content.objectives.titleAm}
+              {t(content.objectives.titleEn)}
             </h2>
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            {(language === 'en' ? content.objectives.itemsEn : content.objectives.itemsAm).map((objective, idx) => (
+            {content.objectives.itemsEn.map((objective, idx) => (
               <div
                 key={idx}
                 className="flex items-start gap-4 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm shadow-blue-100/70"
@@ -323,7 +322,7 @@ const About = () => {
                 <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-bold text-white">
                   {idx + 1}
                 </div>
-                <p className="text-base leading-relaxed text-slate-700 md:text-lg">{objective}</p>
+                <p className="text-base leading-relaxed text-slate-700 md:text-lg">{t(objective)}</p>
               </div>
             ))}
           </div>

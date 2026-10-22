@@ -3,6 +3,7 @@ import { Database, Search } from 'lucide-react';
 import { adminApi, departmentApi, registrationApi } from '../services/api';
 import { resolveApiAssetUrl } from '../../config';
 import { useConfirmation } from './ConfirmationDialog';
+import { useUiText } from '../hooks/useUiText';
 
 const PAGE_SIZE = 10;
 const toUpdateFormData = (fields, photo) => {
@@ -15,6 +16,7 @@ const toUpdateFormData = (fields, photo) => {
 };
 
 const ProfilePhotoInput = ({ photo, currentPhoto, onChange }) => {
+  const t = useUiText();
   const [preview, setPreview] = useState(resolveApiAssetUrl(currentPhoto));
 
   useEffect(() => {
@@ -31,18 +33,18 @@ const ProfilePhotoInput = ({ photo, currentPhoto, onChange }) => {
     <div className="flex items-center gap-4 sm:col-span-2">
       <img
         src={preview || `https://ui-avatars.com/api/?name=User&background=dbeafe&color=1e3a8a`}
-        alt="User profile"
+        alt={t('User profile')}
         className="h-16 w-16 rounded-full border border-slate-200 object-cover"
       />
       <label className="text-sm font-medium text-slate-700">
-        Profile Photo
+        {t('Profile Photo')}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
           onChange={(event) => onChange(event.target.files?.[0] || null)}
           className="mt-1 block w-full text-sm font-normal text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700"
         />
-        <span className="mt-1 block text-xs font-normal text-slate-500">JPG, PNG, WEBP, or GIF; up to 5 MB.</span>
+        <span className="mt-1 block text-xs font-normal text-slate-500">{t('JPG, PNG, WEBP, or GIF; up to 5 MB.')}</span>
       </label>
     </div>
   );
@@ -72,6 +74,7 @@ const getNameParts = (row) => {
 };
 
 const ViewDataView = ({ instructors = [], students = [], users = [], departments = [], initialTab = 'instructors', initialQuery = '', onResetPassword, resettingPasswordUserId, onUserDeleted }) => {
+  const t = useUiText();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [query, setQuery] = useState(initialQuery);
   const [page, setPage] = useState(1);
@@ -120,7 +123,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         if (isCurrent) setManagedColleges(Array.isArray(rows) ? rows : []);
       })
       .catch((error) => {
-        if (isCurrent) setCollegesError(error?.message || 'Unable to load colleges.');
+        if (isCurrent) setCollegesError(error?.message || t('Unable to load colleges.'));
       });
     return () => {
       isCurrent = false;
@@ -129,12 +132,12 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
 
   const handleDeleteRecord = async (record, type) => {
     const label = type === 'department'
-      ? record.name || record.department_name || 'this department'
-      : record.full_name || record.fullName || record.username || 'this instructor';
+      ? record.name || record.department_name || t('this department')
+      : record.full_name || record.fullName || record.username || t('this instructor');
     if (!await requestConfirmation({
-      title: type === 'department' ? 'Delete Department Confirmation' : 'Delete User Confirmation',
-      description: `Are you sure you want to delete ${label}? This action cannot be undone.`,
-      confirmLabel: type === 'department' ? 'Delete Department' : 'Delete User',
+      title: type === 'department' ? t('Delete Department Confirmation') : t('Delete User Confirmation'),
+      description: `${t('Are you sure you want to delete')} ${label}? ${t('This action cannot be undone.')}`,
+      confirmLabel: type === 'department' ? t('Delete Department') : t('Delete User'),
       variant: 'danger',
     })) return;
     setStudentError('');
@@ -160,7 +163,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         onUserDeleted?.(record.id);
       }
     } catch (deleteError) {
-      setStudentError(deleteError?.message || `Unable to delete ${type}.`);
+      setStudentError(deleteError?.message || `${t('Unable to delete')} ${t(type)}.`);
     }
   };
 
@@ -186,7 +189,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       )));
       setEditingInstructor(null);
     } catch (saveError) {
-      setStudentError(saveError?.message || 'Unable to update instructor.');
+      setStudentError(saveError?.message || t('Unable to update instructor.'));
     } finally {
       setRecordSaving(false);
     }
@@ -206,7 +209,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       setManagedDepartments((current) => current.map((row) => (row.id === editingDepartment.id ? { ...row, ...editingDepartment, ...updated } : row)));
       setEditingDepartment(null);
     } catch (saveError) {
-      setStudentError(saveError?.message || 'Unable to update department.');
+      setStudentError(saveError?.message || t('Unable to update department.'));
     } finally {
       setRecordSaving(false);
     }
@@ -227,18 +230,18 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       )));
       setEditingCollege(null);
     } catch (saveError) {
-      setCollegesError(saveError?.message || 'Unable to update college.');
+      setCollegesError(saveError?.message || t('Unable to update college.'));
     } finally {
       setRecordSaving(false);
     }
   };
 
   const handleDeleteCollege = async (college) => {
-    const collegeName = college.name || 'this college';
+    const collegeName = college.name || t('this college');
     if (!await requestConfirmation({
-      title: 'Delete College Confirmation',
-      description: `Are you sure you want to delete ${collegeName}? This action cannot be undone.`,
-      confirmLabel: 'Delete College',
+      title: t('Delete College Confirmation'),
+      description: `${t('Are you sure you want to delete')} ${collegeName}? ${t('This action cannot be undone.')}`,
+      confirmLabel: t('Delete College'),
       variant: 'danger',
     })) return;
     setCollegesError('');
@@ -247,16 +250,16 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       setManagedColleges((current) => current.filter((row) => row.id !== college.id));
       setContextMenu(null);
     } catch (deleteError) {
-      setCollegesError(deleteError?.message || 'Unable to delete college.');
+      setCollegesError(deleteError?.message || t('Unable to delete college.'));
     }
   };
 
   const handleDeleteStudent = async (student) => {
-    const studentName = student.full_name || student.fullName || student.student_id || student.studentId || 'this student';
+    const studentName = student.full_name || student.fullName || student.student_id || student.studentId || t('this student');
     if (!await requestConfirmation({
-      title: 'Delete User Confirmation',
-      description: `Are you sure you want to delete ${studentName}? This action cannot be undone.`,
-      confirmLabel: 'Delete User',
+      title: t('Delete User Confirmation'),
+      description: `${t('Are you sure you want to delete')} ${studentName}? ${t('This action cannot be undone.')}`,
+      confirmLabel: t('Delete User'),
       variant: 'danger',
     })) return;
     setStudentError('');
@@ -271,7 +274,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       });
       onUserDeleted?.(student.id);
     } catch (deleteError) {
-      setStudentError(deleteError?.message || 'Unable to delete student.');
+      setStudentError(deleteError?.message || t('Unable to delete student.'));
     }
   };
 
@@ -437,7 +440,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       columns: [
         ['ID', (row) => row.id],
         ['Name', (row) => row.fullName || row.full_name || '-'],
-        ['Role', (row) => roleLabel(row.role)],
+        ['Role', (row) => t(roleLabel(row.role))],
         ['Username / Email', (row) => row.username || row.email || '-'],
         ['Phone Number', (row) => row.phoneNumber || row.phone_number || '-'],
         ['Gender', (row) => row.gender || '-'],
@@ -445,8 +448,8 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         ['Status', (row) => row.status || 'Active'],
         ['Actions', (row) => <div className="flex items-center gap-2">
           {onResetPassword ? <button type="button" disabled={String(resettingPasswordUserId) === String(row.id)} onClick={() => onResetPassword(row)} className="rounded-lg bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-200 disabled:cursor-wait disabled:opacity-60">{String(resettingPasswordUserId) === String(row.id) ? 'Resetting…' : 'Reset Password'}</button> : null}
-          <button type="button" onClick={() => { setStudentError(''); setEditingInstructor({ id: row.id, role: row.role || 'instructor', username: row.username || '', ...getNameParts(row), phone_number: row.phone_number || row.phoneNumber || '', department_id: String(row.department_id || row.departmentId || ''), gender: row.gender || '', profile_picture: row.profile_picture || '', photoFile: null }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">Edit</button>
-          <button type="button" onClick={() => void handleDeleteRecord(row, 'instructor')} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">Delete</button>
+          <button type="button" onClick={() => { setStudentError(''); setEditingInstructor({ id: row.id, role: row.role || 'instructor', username: row.username || '', ...getNameParts(row), phone_number: row.phone_number || row.phoneNumber || '', department_id: String(row.department_id || row.departmentId || ''), gender: row.gender || '', profile_picture: row.profile_picture || '', photoFile: null }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">{t('Edit')}</button>
+          <button type="button" onClick={() => void handleDeleteRecord(row, 'instructor')} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">{t('Delete')}</button>
         </div>],
       ],
     },
@@ -460,7 +463,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         ['Name', (row) => row.fullName || row.full_name || '-'],
           ['Phone Number', (row) => row.phone_number || row.phoneNumber || '-'],
         ['Department', (row) => row.departmentName || row.department || '-'],
-        ['Program Type', (row) => programLabel(row.programType || row.program_type)],
+        ['Program Type', (row) => t(programLabel(row.programType || row.program_type))],
         ['Year / Section', (row) => `${row.year || row.year_level || '-'} / ${row.section || '-'}`],
         ['Actions', (row) => (
           <div className="flex items-center gap-2">
@@ -478,8 +481,8 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
               gender: row.gender || '',
               profile_picture: row.profile_picture || '',
               photoFile: null,
-            }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">Edit</button>
-            <button type="button" onClick={() => void handleDeleteStudent(row)} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">Delete</button>
+            }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">{t('Edit')}</button>
+            <button type="button" onClick={() => void handleDeleteStudent(row)} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">{t('Delete')}</button>
           </div>
         )],
       ],
@@ -491,7 +494,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       columns: [
         ['ID', (row) => row.id],
         ['Name', (row) => row.fullName || '-'],
-        ['Role', (row) => roleLabel(row.role)],
+        ['Role', (row) => t(roleLabel(row.role))],
         ['Username', (row) => row.username || '-'],
         ['Department', (row) => row.departmentName || row.department || '-'],
         ['Status', (row) => row.status || 'Active'],
@@ -509,7 +512,7 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
             }}
             className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200"
           >
-            Edit Photo
+            {t('Edit Photo')}
           </button>
         )],
       ],
@@ -525,8 +528,8 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         ['Category', (row) => row.category || 'Custom'],
         ['Registered On', (row) => row.registeredAt || row.created_at || '-'],
         ['Actions', (row) => <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { setStudentError(''); setEditingDepartment({ id: row.id, name: row.name || row.department_name || '', code: row.code || row.department_code || '', college_id: row.college_id || row.collegeId || '' }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">Edit</button>
-          <button type="button" onClick={() => void handleDeleteRecord(row, 'department')} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">Delete</button>
+          <button type="button" onClick={() => { setStudentError(''); setEditingDepartment({ id: row.id, name: row.name || row.department_name || '', code: row.code || row.department_code || '', college_id: row.college_id || row.collegeId || '' }); }} className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200">{t('Edit')}</button>
+          <button type="button" onClick={() => void handleDeleteRecord(row, 'department')} className="rounded-lg bg-red-100 px-3 py-1 text-xs font-semibold text-red-800 hover:bg-red-200">{t('Delete')}</button>
         </div>],
       ],
     },
@@ -547,12 +550,12 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
             }}
             className="rounded-lg bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800 hover:bg-blue-200"
           >
-            Edit
+            {t('Edit')}
           </button>
         )],
       ],
     },
-  }), [managedInstructors, managedDepartments, managedStudents, managedUsers, managedColleges, onResetPassword]);
+  }), [managedInstructors, managedDepartments, managedStudents, managedUsers, managedColleges, onResetPassword, t]);
 
   const activeEntity = entityConfig[activeTab];
   const filteredRows = useMemo(() => {
@@ -590,9 +593,9 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
           ? 'students'
           : 'instructors';
     if (!await requestConfirmation({
-      title: 'Delete Selected Records',
-      description: `Are you sure you want to delete the selected ${selectionLabel}? This action cannot be undone.`,
-      confirmLabel: 'Delete Selected',
+      title: t('Delete Selected Records'),
+      description: `${t('Are you sure you want to delete the selected')} ${t(selectionLabel)}? ${t('This action cannot be undone.')}`,
+      confirmLabel: t('Delete Selected'),
       variant: 'danger',
     })) return;
 
@@ -661,30 +664,30 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         <div className="flex items-center gap-3">
           <Database size={22} className="text-blue-600" aria-hidden="true" />
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">View Data</h2>
-            <p className="mt-1 text-slate-600">Browse registered accounts and departments.</p>
+            <h2 className="text-2xl font-bold text-slate-900">{t('View Data')}</h2>
+            <p className="mt-1 text-slate-600">{t('Browse registered accounts and departments.')}</p>
           </div>
         </div>
         <label className="relative block w-full lg:w-80">
-          <span className="sr-only">Search {activeEntity.label}</span>
+          <span className="sr-only">{t('Search')} {t(activeEntity.label)}</span>
           <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${activeTab === 'instructors' ? 'username, email, or phone number' : activeTab === 'students' ? 'student ID or name' : activeTab === 'users' ? 'name, username, or role' : 'department name'}...`} className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`${t('Search')} ${t(activeTab === 'instructors' ? 'username, email, or phone number' : activeTab === 'students' ? 'student ID or name' : activeTab === 'users' ? 'name, username, or role' : 'department name')}...`} className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500" />
         </label>
       </div>
 
       <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2">
         {Object.entries(entityConfig).map(([id, entity]) => (
           <button key={id} type="button" aria-pressed={activeTab === id} onClick={() => { setActiveTab(id); setQuery(''); }} className={`rounded-xl border border-transparent px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${activeTab === id ? 'bg-blue-700 text-white shadow-md hover:bg-blue-800' : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-blue-700'}`}>
-            {entity.label}
+            {t(entity.label)}
           </button>
         ))}
       </div>
 
       {['instructors', 'students', 'users'].includes(activeTab) && <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-3">
-        <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">Department</span><select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">All departments</option>{departments.map((department) => <option key={department.id} value={String(department.id)}>{department.name}</option>)}</select></label>
+        <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">{t('Department')}</span><select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">{t('All departments')}</option>{departments.map((department) => <option key={department.id} value={String(department.id)}>{department.name}</option>)}</select></label>
         {activeTab === 'students' && <>
-          <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">Year Level</span><select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">All year levels</option>{['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', '7th Year'].map((year) => <option key={year} value={year}>{year}</option>)}</select></label>
-          <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">Section</span><select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">All sections</option>{'ABCDEFGHIJKL'.split('').map((section) => <option key={section} value={section}>Section {section}</option>)}</select></label>
+          <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">{t('Year Level')}</span><select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">{t('All year levels')}</option>{['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year', '7th Year'].map((year) => <option key={year} value={year}>{t(year)}</option>)}</select></label>
+          <label className="text-sm text-slate-600"><span className="mb-1 block font-medium">{t('Section')}</span><select value={sectionFilter} onChange={(event) => setSectionFilter(event.target.value)} className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3"><option value="All">{t('All sections')}</option>{'ABCDEFGHIJKL'.split('').map((section) => <option key={section} value={section}>{t('Section')} {section}</option>)}</select></label>
         </>}
       </div>}
 
@@ -698,13 +701,13 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_18px_55px_-34px_rgba(37,99,235,0.24)]">
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
           <div className="flex items-center gap-3">
-            <h3 className="font-semibold text-slate-900">{activeEntity.label}</h3>
-            <span className="text-sm text-slate-500">{filteredRows.length} record{filteredRows.length === 1 ? '' : 's'}</span>
+            <h3 className="font-semibold text-slate-900">{t(activeEntity.label)}</h3>
+            <span className="text-sm text-slate-500">{filteredRows.length} {t(filteredRows.length === 1 ? 'record' : 'records')}</span>
           </div>
           {selectionMode ? (
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => { setSelectedIds(new Set()); setSelectionMode(false); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">Done / Clear Selection</button>
-              {selectedCount > 0 ? <button type="button" onClick={() => void handleDeleteSelected()} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500">Delete Selected ({selectedCount})</button> : null}
+              <button type="button" onClick={() => { setSelectedIds(new Set()); setSelectionMode(false); }} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">{t('Done / Clear Selection')}</button>
+              {selectedCount > 0 ? <button type="button" onClick={() => void handleDeleteSelected()} className="rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-red-500">{t('Delete Selected')} ({selectedCount})</button> : null}
             </div>
           ) : null}
         </div>
@@ -719,11 +722,11 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
                       checked={allVisibleSelected}
                       onChange={toggleVisibleSelection}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                      aria-label="Select visible rows"
+                      aria-label={t('Select visible rows')}
                     />
                   </th>
                 ) : null}
-                {activeEntity.columns.map(([label]) => <th key={label} className="whitespace-nowrap px-5 py-3 font-semibold text-slate-600">{label}</th>)}
+                {activeEntity.columns.map(([label]) => <th key={label} className="whitespace-nowrap px-5 py-3 font-semibold text-slate-600">{t(label)}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -737,23 +740,23 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
                           checked={selectedIds.has(String(row.id))}
                           onChange={() => toggleRowSelection(row.id)}
                           className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                          aria-label={`Select ${row.fullName || row.full_name || row.username || row.name || row.student_id || row.id}`}
+                          aria-label={`${t('Select')} ${row.fullName || row.full_name || row.username || row.name || row.student_id || row.id}`}
                         />
                       </td>
                     ) : null}
                     {activeEntity.columns.map(([label, getValue]) => <td key={`${row.id ?? index}-${label}`} className="whitespace-nowrap px-5 py-4 text-slate-700">{getValue(row)}</td>)}
                   </tr>
                 );
-              }) : <tr><td colSpan={activeEntity.columns.length + (selectionMode ? 1 : 0)} className="px-5 py-12 text-center text-slate-500">No matching {activeEntity.label.toLowerCase()} found.</td></tr>}
+              }) : <tr><td colSpan={activeEntity.columns.length + (selectionMode ? 1 : 0)} className="px-5 py-12 text-center text-slate-500">{t('No matching')} {t(activeEntity.label.toLowerCase())} {t('found.')}</td></tr>}
             </tbody>
           </table>
         </div>
         <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">Showing {firstEntry} to {lastEntry} of {filteredRows.length} entries</p>
+          <p className="text-sm text-slate-500">{t('Showing')} {firstEntry} {t('to')} {lastEntry} {t('of')} {filteredRows.length} {t('entries')}</p>
           <div className="flex items-center justify-center gap-1">
-            <button type="button" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+            <button type="button" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">{t('Previous')}</button>
             {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => <button key={pageNumber} type="button" onClick={() => setPage(pageNumber)} className={`min-w-9 rounded-lg px-3 py-2 text-sm font-semibold ${currentPage === pageNumber ? 'bg-blue-600 text-white' : 'border border-slate-300 text-slate-700 hover:bg-slate-100'}`}>{pageNumber}</button>)}
-            <button type="button" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+            <button type="button" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">{t('Next')}</button>
           </div>
         </div>
       </div>
@@ -771,16 +774,16 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
         >
           {activeTab === 'colleges' ? (
             <>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('select')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Select</button>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('edit')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Edit</button>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('delete')} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('select')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('Select')}</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('edit')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('Edit')}</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('delete')} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">{t('Delete')}</button>
             </>
           ) : (
             <>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('select')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Select</button>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('edit')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">Edit User</button>
-              <button type="button" role="menuitem" disabled={!onResetPassword || activeTab === 'departments' || String(resettingPasswordUserId) === String(contextMenu.row.id)} onClick={() => handleContextMenuAction('reset')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50">{String(resettingPasswordUserId) === String(contextMenu.row.id) ? 'Resetting…' : 'Reset Password'}</button>
-              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('delete')} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete User</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('select')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('Select')}</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('edit')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100">{t('Edit User')}</button>
+              <button type="button" role="menuitem" disabled={!onResetPassword || activeTab === 'departments' || String(resettingPasswordUserId) === String(contextMenu.row.id)} onClick={() => handleContextMenuAction('reset')} className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50">{String(resettingPasswordUserId) === String(contextMenu.row.id) ? t('Resetting…') : t('Reset Password')}</button>
+              <button type="button" role="menuitem" onClick={() => handleContextMenuAction('delete')} className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">{t('Delete User')}</button>
             </>
           )}
         </div>
@@ -791,28 +794,28 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
           <form onSubmit={handleStudentSubmit} className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Edit Student</h3>
-                <p className="mt-1 text-sm text-slate-500">Update the student record and save the changes.</p>
+                <h3 className="text-xl font-bold text-slate-900">{t('Edit Student')}</h3>
+                <p className="mt-1 text-sm text-slate-500">{t('Update the student record and save the changes.')}</p>
               </div>
-              <button type="button" onClick={() => setEditingStudent(null)} className="text-xl text-slate-500" aria-label="Close edit student modal">✕</button>
+              <button type="button" onClick={() => setEditingStudent(null)} className="text-xl text-slate-500" aria-label={t('Close edit student modal')}>✕</button>
             </div>
             {studentError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{studentError}</p> : null}
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <ProfilePhotoInput photo={editingStudent.photoFile} currentPhoto={editingStudent.profile_picture} onChange={(photoFile) => setEditingStudent((current) => ({ ...current, photoFile }))} />
-              <label className="text-sm font-medium text-slate-700">Student ID<input required value={editingStudent.student_id} onChange={(event) => setEditingStudent((current) => ({ ...current, student_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">First Name<input required value={editingStudent.first_name} onChange={(event) => setEditingStudent((current) => ({ ...current, first_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Last Name<input required value={editingStudent.last_name} onChange={(event) => setEditingStudent((current) => ({ ...current, last_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Gender<select required value={editingStudent.gender} onChange={(event) => setEditingStudent((current) => ({ ...current, gender: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="">Select Gender</option><option value="male">Male</option><option value="female">Female</option></select></label>
-              <label className="text-sm font-medium text-slate-700">Phone Number<input value={editingStudent.phone_number} onChange={(event) => setEditingStudent((current) => ({ ...current, phone_number: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Department<select required value={editingStudent.department_id} onChange={(event) => setEditingStudent((current) => ({ ...current, department_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">Select department</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
-              <label className="text-sm font-medium text-slate-700">Semester<select value={editingStudent.semester} onChange={(event) => setEditingStudent((current) => ({ ...current, semester: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="i">I</option><option value="ii">II</option></select></label>
-              <label className="text-sm font-medium text-slate-700">Year Level<input required value={editingStudent.year} onChange={(event) => setEditingStudent((current) => ({ ...current, year: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Section<input required value={editingStudent.section} onChange={(event) => setEditingStudent((current) => ({ ...current, section: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Program Type<select value={editingStudent.program_type} onChange={(event) => setEditingStudent((current) => ({ ...current, program_type: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="regular">Regular</option><option value="extension">Extension</option></select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Student ID')}<input required value={editingStudent.student_id} onChange={(event) => setEditingStudent((current) => ({ ...current, student_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('First Name')}<input required value={editingStudent.first_name} onChange={(event) => setEditingStudent((current) => ({ ...current, first_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Last Name')}<input required value={editingStudent.last_name} onChange={(event) => setEditingStudent((current) => ({ ...current, last_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Gender')}<select required value={editingStudent.gender} onChange={(event) => setEditingStudent((current) => ({ ...current, gender: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="">{t('Select Gender')}</option><option value="male">{t('Male')}</option><option value="female">{t('Female')}</option></select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Phone Number')}<input value={editingStudent.phone_number} onChange={(event) => setEditingStudent((current) => ({ ...current, phone_number: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Department')}<select required value={editingStudent.department_id} onChange={(event) => setEditingStudent((current) => ({ ...current, department_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">{t('Select department')}</option>{departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Semester')}<select value={editingStudent.semester} onChange={(event) => setEditingStudent((current) => ({ ...current, semester: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="i">I</option><option value="ii">II</option></select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Year Level')}<input required value={editingStudent.year} onChange={(event) => setEditingStudent((current) => ({ ...current, year: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Section')}<input required value={editingStudent.section} onChange={(event) => setEditingStudent((current) => ({ ...current, section: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Program Type')}<select value={editingStudent.program_type} onChange={(event) => setEditingStudent((current) => ({ ...current, program_type: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="regular">{t('Regular')}</option><option value="extension">{t('Extension')}</option></select></label>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setEditingStudent(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-              <button type="submit" disabled={studentSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{studentSaving ? 'Saving...' : 'Save Changes'}</button>
+              <button type="button" onClick={() => setEditingStudent(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">{t('Cancel')}</button>
+              <button type="submit" disabled={studentSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{studentSaving ? t('Saving...') : t('Save Changes')}</button>
             </div>
           </form>
         </div>
@@ -821,18 +824,18 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       {editingInstructor ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
           <form onSubmit={handleInstructorSubmit} className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-slate-900">Edit Instructor</h3><button type="button" onClick={() => setEditingInstructor(null)} className="text-xl text-slate-500" aria-label="Close edit instructor modal">✕</button></div>
+            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-slate-900">{t('Edit Instructor')}</h3><button type="button" onClick={() => setEditingInstructor(null)} className="text-xl text-slate-500" aria-label={t('Close edit instructor modal')}>✕</button></div>
             {studentError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{studentError}</p> : null}
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <ProfilePhotoInput photo={editingInstructor.photoFile} currentPhoto={editingInstructor.profile_picture} onChange={(photoFile) => setEditingInstructor((current) => ({ ...current, photoFile }))} />
-              <label className="text-sm font-medium text-slate-700">Username<input required value={editingInstructor.username} onChange={(event) => setEditingInstructor((current) => ({ ...current, username: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">First Name<input required value={editingInstructor.first_name} onChange={(event) => setEditingInstructor((current) => ({ ...current, first_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Last Name<input required value={editingInstructor.last_name} onChange={(event) => setEditingInstructor((current) => ({ ...current, last_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Gender<select required value={editingInstructor.gender} onChange={(event) => setEditingInstructor((current) => ({ ...current, gender: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="">Select Gender</option><option value="male">Male</option><option value="female">Female</option></select></label>
-              <label className="text-sm font-medium text-slate-700">Phone Number<input required value={editingInstructor.phone_number} onChange={(event) => setEditingInstructor((current) => ({ ...current, phone_number: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
-              <label className="text-sm font-medium text-slate-700">Department<select required value={editingInstructor.department_id} onChange={(event) => setEditingInstructor((current) => ({ ...current, department_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">Select department</option>{managedDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Username')}<input required value={editingInstructor.username} onChange={(event) => setEditingInstructor((current) => ({ ...current, username: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('First Name')}<input required value={editingInstructor.first_name} onChange={(event) => setEditingInstructor((current) => ({ ...current, first_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Last Name')}<input required value={editingInstructor.last_name} onChange={(event) => setEditingInstructor((current) => ({ ...current, last_name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Gender')}<select required value={editingInstructor.gender} onChange={(event) => setEditingInstructor((current) => ({ ...current, gender: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-normal"><option value="">{t('Select Gender')}</option><option value="male">{t('Male')}</option><option value="female">{t('Female')}</option></select></label>
+              <label className="text-sm font-medium text-slate-700">{t('Phone Number')}<input required value={editingInstructor.phone_number} onChange={(event) => setEditingInstructor((current) => ({ ...current, phone_number: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label>
+              <label className="text-sm font-medium text-slate-700">{t('Department')}<select required value={editingInstructor.department_id} onChange={(event) => setEditingInstructor((current) => ({ ...current, department_id: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">{t('Select department')}</option>{managedDepartments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select></label>
             </div>
-            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingInstructor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button><button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? 'Saving...' : 'Save Changes'}</button></div>
+            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingInstructor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">{t('Cancel')}</button><button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? t('Saving...') : t('Save Changes')}</button></div>
           </form>
         </div>
       ) : null}
@@ -842,10 +845,10 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
           <form onSubmit={handleAccountPhotoSubmit} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Edit User Photo</h3>
+                <h3 className="text-xl font-bold text-slate-900">{t('Edit User Photo')}</h3>
                 <p className="mt-1 text-sm text-slate-500">{editingAccount.fullName}</p>
               </div>
-              <button type="button" onClick={() => setEditingAccount(null)} className="text-xl text-slate-500" aria-label="Close edit user photo modal">✕</button>
+              <button type="button" onClick={() => setEditingAccount(null)} className="text-xl text-slate-500" aria-label={t('Close edit user photo modal')}>✕</button>
             </div>
             {studentError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{studentError}</p> : null}
             <div className="mt-5">
@@ -856,8 +859,8 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
               />
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setEditingAccount(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-              <button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? 'Saving...' : 'Save Photo'}</button>
+              <button type="button" onClick={() => setEditingAccount(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">{t('Cancel')}</button>
+              <button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? t('Saving...') : t('Save Photo')}</button>
             </div>
           </form>
         </div>
@@ -868,25 +871,25 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
           <form onSubmit={handleCollegeSubmit} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">Edit College</h3>
-                <p className="mt-1 text-sm text-slate-500">Update the college name and code.</p>
+                <h3 className="text-xl font-bold text-slate-900">{t('Edit College')}</h3>
+                <p className="mt-1 text-sm text-slate-500">{t('Update the college name and code.')}</p>
               </div>
-              <button type="button" onClick={() => setEditingCollege(null)} className="text-xl text-slate-500" aria-label="Close edit college modal">✕</button>
+              <button type="button" onClick={() => setEditingCollege(null)} className="text-xl text-slate-500" aria-label={t('Close edit college modal')}>✕</button>
             </div>
             {collegesError ? <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{collegesError}</p> : null}
             <div className="mt-5 space-y-4">
               <label className="block text-sm font-medium text-slate-700">
-                College Name
+                {t('College Name')}
                 <input required value={editingCollege.name} onChange={(event) => setEditingCollege((current) => ({ ...current, name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
               </label>
               <label className="block text-sm font-medium text-slate-700">
-                College Code
+                {t('College Code')}
                 <input required value={editingCollege.code} onChange={(event) => setEditingCollege((current) => ({ ...current, code: event.target.value.toUpperCase() }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" />
               </label>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setEditingCollege(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button>
-              <button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? 'Saving...' : 'Save Changes'}</button>
+              <button type="button" onClick={() => setEditingCollege(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">{t('Cancel')}</button>
+              <button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? t('Saving...') : t('Save Changes')}</button>
             </div>
           </form>
         </div>
@@ -895,10 +898,10 @@ const ViewDataView = ({ instructors = [], students = [], users = [], departments
       {editingDepartment ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
           <form onSubmit={handleDepartmentSubmit} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-slate-900">Edit Department</h3><button type="button" onClick={() => setEditingDepartment(null)} className="text-xl text-slate-500" aria-label="Close edit department modal">✕</button></div>
+            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-slate-900">{t('Edit Department')}</h3><button type="button" onClick={() => setEditingDepartment(null)} className="text-xl text-slate-500" aria-label={t('Close edit department modal')}>✕</button></div>
             {studentError ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{studentError}</p> : null}
-            <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-slate-700">Department Name<input required value={editingDepartment.name} onChange={(event) => setEditingDepartment((current) => ({ ...current, name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label><label className="text-sm font-medium text-slate-700">Department Code<input required value={editingDepartment.code} onChange={(event) => setEditingDepartment((current) => ({ ...current, code: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label></div>
-            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingDepartment(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Cancel</button><button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? 'Saving...' : 'Save Changes'}</button></div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-slate-700">{t('Department Name')}<input required value={editingDepartment.name} onChange={(event) => setEditingDepartment((current) => ({ ...current, name: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label><label className="text-sm font-medium text-slate-700">{t('Department Code')}<input required value={editingDepartment.code} onChange={(event) => setEditingDepartment((current) => ({ ...current, code: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" /></label></div>
+            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingDepartment(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">{t('Cancel')}</button><button type="submit" disabled={recordSaving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{recordSaving ? t('Saving...') : t('Save Changes')}</button></div>
           </form>
         </div>
       ) : null}

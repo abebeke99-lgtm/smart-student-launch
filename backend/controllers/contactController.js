@@ -1,11 +1,7 @@
 const pool = require("../config/db");
 const { getSystemSetting, setSystemSetting } = require("../config/audit");
 const { sendEmail } = require("../services/emailService");
-
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
+const { isValidEmail } = require("../utils/inputValidation");
 
 const getAdminContactSettings = async () => {
   const fallbackName = String(
@@ -242,14 +238,14 @@ const submitContactMessage = async (req, res) => {
   try {
     const { name, email, subject, message } = req.body;
 
-    if (!name || !name.trim()) {
+    if (typeof name !== "string" || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: { en: "Name is required.", am: "ስም አስፈላጊ ነው።" },
       });
     }
 
-    if (!email || !email.trim()) {
+    if (typeof email !== "string" || !email.trim()) {
       return res.status(400).json({
         success: false,
         message: { en: "Email is required.", am: "ኢሜይል አስፈላጊ ነው።" },
@@ -264,7 +260,7 @@ const submitContactMessage = async (req, res) => {
       });
     }
 
-    if (!message || !message.trim()) {
+    if (typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
         success: false,
         message: { en: "Message is required.", am: "መልእክት አስፈላጊ ነው።" },

@@ -37,14 +37,14 @@ test("hashes and stores an admin-provided password", async () => {
   const response = createResponse();
 
   await resetUserPasswordDirectly(
-    { body: { userId: "42", newPassword: "admin-set-password" } },
+    { body: { userId: "42", newPassword: "AdminSet1!" } },
     response,
   );
 
   assert.equal(response.body.success, true);
   assert.equal(update.params[1], 42);
-  assert.notEqual(update.params[0], "admin-set-password");
-  assert.equal(await bcrypt.compare("admin-set-password", update.params[0]), true);
+  assert.notEqual(update.params[0], "AdminSet1!");
+  assert.equal(await bcrypt.compare("AdminSet1!", update.params[0]), true);
   assert.match(update.sql, /reset_otp = NULL/);
   assert.match(update.sql, /reset_token = NULL/);
 });
@@ -96,7 +96,7 @@ test("returns not found for an unknown account", async () => {
   pool.query = async () => [{ affectedRows: 0 }];
   const response = createResponse();
   await resetUserPasswordDirectly(
-    { body: { userId: 42, newPassword: "admin-set-password" } },
+    { body: { userId: 42, newPassword: "AdminSet1!" } },
     response,
   );
   assert.equal(response.statusCode, 404);
@@ -109,7 +109,7 @@ test("returns a clear server error when the update fails", async () => {
   console.error = () => {};
   const response = createResponse();
   await resetUserPasswordDirectly(
-    { body: { userId: 42, newPassword: "admin-set-password" } },
+    { body: { userId: 42, newPassword: "AdminSet1!" } },
     response,
   );
   assert.equal(response.statusCode, 500);

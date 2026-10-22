@@ -20,4 +20,7 @@ const isValidPhoneNumber = (value) => {
   return /^[1-9]\d{7,14}$/.test(normalized);
 };
 
-module.exports = { normalizePhoneNumber, isValidPhoneNumber };
+const isValidRegistrationPhoneNumber = (value) =>
+  typeof value === 'string' && /^(09|07)\d{8}$/.test(value);
+
+module.exports = { normalizePhoneNumber, isValidPhoneNumber, isValidRegistrationPhoneNumber };

@@ -1,6 +1,8 @@
 import { FaCheckCircle } from 'react-icons/fa';
+import { useUiText } from '../hooks/useUiText';
 
 const SuccessModal = ({ open, title, message, buttonText, onClose }) => {
+  const t = useUiText();
   if (!open) return null;
 
   return (
@@ -12,7 +14,7 @@ const SuccessModal = ({ open, title, message, buttonText, onClose }) => {
               <FaCheckCircle className="h-10 w-10" />
             </div>
           </div>
-          <h3 className="pt-10 text-3xl font-semibold text-slate-900">{title}</h3>
+          <h3 className="pt-10 text-3xl font-semibold text-slate-900">{t(title)}</h3>
           <div className="mx-auto mt-5 max-w-xs rounded-3xl bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-900 shadow-sm">
             {message}
           </div>
@@ -24,7 +26,7 @@ const SuccessModal = ({ open, title, message, buttonText, onClose }) => {
             onClick={onClose}
             className="inline-flex w-full items-center justify-center rounded-full bg-emerald-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
-            {buttonText}
+            {t(buttonText)}
           </button>
         </div>
       </div>

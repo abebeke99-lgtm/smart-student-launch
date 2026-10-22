@@ -10,6 +10,7 @@ import InteractiveMetricCard from '../components/InteractiveMetricCard';
 import EvaluationDeadlineBadge from '../components/EvaluationDeadlineBadge';
 import EvaluationPeriodStatus from '../components/EvaluationPeriodStatus';
 import { DashboardSidebarContext } from '../context/DashboardSidebarContext';
+import useUiText from '../hooks/useUiText';
 
 const resolveTranslationValue = (value, fallback = '', preferredLanguage = 'en') => {
   if (typeof value === 'string') return value;
@@ -96,6 +97,7 @@ const studentEvaluationSections = [
 ];
 
 const StudentDashboard = () => {
+  const tUi = useUiText();
   const { strings: rawStrings, language } = useContext(LanguageContext);
   const { sidebarOpen, setSidebarOpen } = useContext(DashboardSidebarContext);
   const { user, role, isAuthenticated, authToken } = useAuth();
@@ -125,7 +127,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     criteriaApi.get('student').then((rows) => {
       const grouped = (Array.isArray(rows) ? rows : []).reduce((result, criterion) => {
-        const category = criterion.category || 'General';
+        const category = criterion.category || tUi('General');
         const section = result.find((item) => item.title.en === category);
         const item = { id: String(criterion.id), en: criterion.criterion_text, am: criterion.criterion_text_am || criterion.criterion_text };
         if (section) section.items.push(item);
@@ -191,7 +193,7 @@ const StudentDashboard = () => {
         }
       } catch (fetchError) {
         console.error(fetchError);
-        setError(fetchError?.message || 'Unable to load student dashboard data.');
+        setError(fetchError?.message || tUi('Unable to load student dashboard data.'));
       } finally {
         setLoading(false);
       }
@@ -228,7 +230,7 @@ const StudentDashboard = () => {
         console.error('Student evaluations refresh failed:', refreshError);
         setPendingCourses([]);
         setPendingDispatches([]);
-        setError(refreshError?.message || 'Unable to refresh student evaluations.');
+        setError(refreshError?.message || tUi('Unable to refresh student evaluations.'));
       }
     };
     const refreshWhenVisible = () => {
@@ -307,7 +309,7 @@ const StudentDashboard = () => {
       return 'Abebe Bikila';
     }
 
-    return fullNameParts.length ? fullNameParts.join(' ') : 'Student';
+    return fullNameParts.length ? fullNameParts.join(' ') : tUi('Student');
   };
   const sidebarItems = [
     { key: 'overview', label: t('studentDashboard.overview'), icon: FaHome },
@@ -333,9 +335,9 @@ const StudentDashboard = () => {
 
   const getInstructorName = (course) => {
     if (isLabAssistantRole(course?.target_role) || isLabAssistantRole(course?.role)) {
-      return course?.instructor_name?.trim() || 'Lab Assistant';
+      return course?.instructor_name?.trim() || tUi('Lab Assistant');
     }
-    return course?.instructor_name?.trim() || course?.instructor?.trim() || 'Assigned Instructor';
+    return course?.instructor_name?.trim() || course?.instructor?.trim() || tUi('Assigned Instructor');
   };
   const getScoreValue = (item) => Number(item?.total_score ?? item?.score ?? item?.totalScore ?? item?.overall_score ?? 0) || 0;
 
@@ -348,14 +350,14 @@ const StudentDashboard = () => {
       return (
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
-            ✓ Evaluated ({scoreValue}/100)
+            ✓ {tUi('Evaluated')} ({scoreValue}/100)
           </span>
           <button
             type="button"
             onClick={() => openEvaluation(course, 'view', course)}
             className="text-sm font-semibold text-blue-600 underline transition-colors hover:text-blue-800"
           >
-            View Details
+            {tUi('View Details')}
           </button>
         </div>
       );
@@ -367,7 +369,7 @@ const StudentDashboard = () => {
         onClick={() => openEvaluation(course, 'create', null)}
         className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-100 hover:text-indigo-700"
       >
-        <FaStar /> Evaluate
+        <FaStar /> {tUi('Evaluate')}
       </button>
     );
   };
@@ -379,7 +381,7 @@ const StudentDashboard = () => {
     try {
       const submission = await evaluationApi.submitStudentEvaluationForm(payload);
       const submittedScore = Number(submission?.score ?? submission?.total_score ?? payload.score ?? 0);
-      setStudentModalSuccess('Student evaluation submitted successfully.');
+      setStudentModalSuccess(tUi('Student evaluation submitted successfully.'));
       setShowStudentModal(false);
       setPendingDispatches((current) => current.map((dispatch) => (dispatch.id === payload.dispatch_id ? { ...dispatch, status: 'submitted', score: submittedScore, total_score: submittedScore, submission_status: 'submitted', is_evaluated: true } : dispatch)));
       setPendingCourses((current) => current.map((course) => (course.id === payload.dispatch_id ? { ...course, status: 'submitted', score: submittedScore, total_score: submittedScore, submission_status: 'submitted', is_evaluated: true } : course)));
@@ -388,7 +390,7 @@ const StudentDashboard = () => {
       window.dispatchEvent(new CustomEvent(SUBMISSIONS_UPDATED_EVENT, { detail: { type: 'submission' } }));
     } catch (submitError) {
       console.error('Student evaluation submission error:', submitError);
-      setStudentModalError(submitError?.message || 'Unable to submit evaluation.');
+      setStudentModalError(submitError?.message || tUi('Unable to submit evaluation.'));
     } finally {
       setStudentModalLoading(false);
     }
@@ -410,7 +412,7 @@ const StudentDashboard = () => {
     if (loading) {
       return (
         <div className="card p-6">
-          <p className="text-sm text-gray-600">Loading dashboard data...</p>
+          <p className="text-sm text-gray-600">{tUi('Loading dashboard data...')}</p>
         </div>
       );
     }
@@ -453,14 +455,17 @@ const StudentDashboard = () => {
                 <tbody>
                   {filteredEvaluationCourses.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="py-8 text-center text-sm text-gray-500">No pending evaluations.</td>
+                      <td colSpan="5" className="py-8 text-center text-sm text-gray-500">{tUi('No pending evaluations.')}</td>
                     </tr>
                   ) : (
                     filteredEvaluationCourses.map((course, index) => (
                       <tr key={`dispatch-${course.id}-${index}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="py-3 text-sm font-medium text-gray-800">{course.course_code || course.code || '-'}</td>
-                        <td className="py-3 text-sm text-gray-600">{renderText(`${course.course_name || course.name || '-'}${isLabAssistantRole(course.target_role) && !String(course.course_name || '').endsWith(' (Lab)') ? ' (Lab)' : ''}`)}</td>
-                        <td className="py-3 text-sm text-gray-600"><span className="block">{getInstructorName(course)}</span>{isLabAssistantRole(course.target_role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Lab Assistant (ARA)</span>}</td>
+                        <td className="py-3 text-sm text-gray-600">
+                          {renderText(`${course.course_name || course.name || '-'}${isLabAssistantRole(course.target_role) && !String(course.course_name || '').endsWith(' (Lab)') ? ` (${tUi('Lab')})` : ''}`)}
+                          {(course.semester || course.academic_year) && <span className="mt-1 block text-xs text-gray-400">{[course.semester, course.academic_year].filter(Boolean).join(' · ')}</span>}
+                        </td>
+                        <td className="py-3 text-sm text-gray-600"><span className="block">{getInstructorName(course)}</span>{isLabAssistantRole(course.target_role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{tUi('Lab Assistant (ARA)')}</span>}</td>
                         <td className="py-3 text-sm"><EvaluationDeadlineBadge value={course} /></td>
                         <td className="py-3">{renderCourseAction(course)}</td>
                       </tr>
@@ -495,14 +500,14 @@ const StudentDashboard = () => {
                 <tbody>
                   {pendingCourses.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="py-8 text-center text-sm text-gray-500">No courses available.</td>
+                      <td colSpan="4" className="py-8 text-center text-sm text-gray-500">{tUi('No courses available.')}</td>
                     </tr>
                   ) : (
                     pendingCourses.map((course, index) => (
                       <tr key={`dispatch-${course.id}-${index}`} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="py-3 text-sm font-medium text-gray-800">{course.course_code || course.code || '-'}</td>
-                        <td className="py-3 text-sm text-gray-600">{renderText(`${course.course_name || course.name || '-'}${isLabAssistantRole(course.target_role) && !String(course.course_name || '').endsWith(' (Lab)') ? ' (Lab)' : ''}`)}</td>
-                        <td className="py-3 text-sm text-gray-600"><span className="block">{getInstructorName(course)}</span>{isLabAssistantRole(course.target_role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Lab Assistant (ARA)</span>}</td>
+                        <td className="py-3 text-sm text-gray-600">{renderText(`${course.course_name || course.name || '-'}${isLabAssistantRole(course.target_role) && !String(course.course_name || '').endsWith(' (Lab)') ? ` (${tUi('Lab')})` : ''}`)}</td>
+                        <td className="py-3 text-sm text-gray-600"><span className="block">{getInstructorName(course)}</span>{isLabAssistantRole(course.target_role) && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{tUi('Lab Assistant (ARA)')}</span>}</td>
                         <td className="py-3 text-sm"><EvaluationDeadlineBadge value={course} /></td>
                       </tr>
                     ))
@@ -566,9 +571,9 @@ const StudentDashboard = () => {
         return (
           <div className="space-y-6">
             <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
-              <InteractiveMetricCard label="Total Courses" value={totalCourses} icon={BookOpen} tone="cyan" onClick={() => { setEvaluationFilter('all'); setActiveTab('my-evaluations'); }} />
-              <InteractiveMetricCard label="Pending" value={pendingCount} icon={ClipboardCheckIcon} tone="amber" onClick={() => { setEvaluationFilter('pending'); setActiveTab('my-evaluations'); }} />
-              <InteractiveMetricCard label="Completed" value={completedCount} icon={CheckCircle2} tone="emerald" onClick={() => { setEvaluationFilter('completed'); setActiveTab('my-evaluations'); }} />
+              <InteractiveMetricCard label={tUi('Total Courses')} value={totalCourses} icon={BookOpen} tone="cyan" onClick={() => { setEvaluationFilter('all'); setActiveTab('my-evaluations'); }} />
+              <InteractiveMetricCard label={tUi('Pending')} value={pendingCount} icon={ClipboardCheckIcon} tone="amber" onClick={() => { setEvaluationFilter('pending'); setActiveTab('my-evaluations'); }} />
+              <InteractiveMetricCard label={tUi('Completed')} value={completedCount} icon={CheckCircle2} tone="emerald" onClick={() => { setEvaluationFilter('completed'); setActiveTab('my-evaluations'); }} />
             </div>
 
             <div className="flex justify-center">
@@ -577,7 +582,7 @@ const StudentDashboard = () => {
                 onClick={() => setActiveTab('my-evaluations')}
                 className="w-full max-w-lg rounded-3xl bg-ieps-blue-600 px-6 py-4 text-base font-semibold text-white shadow-sm transition hover:bg-ieps-blue-700 sm:w-auto"
               >
-                Start Pending Evaluations
+                {tUi('Start Pending Evaluations')}
               </button>
             </div>
           </div>
@@ -587,7 +592,7 @@ const StudentDashboard = () => {
 
   return (
     <div className="student-dashboard-root h-full w-full min-w-0">
-      {sidebarOpen ? <button type="button" aria-label="Close sidebar" className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
+      {sidebarOpen ? <button type="button" aria-label={tUi('Close sidebar')} className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-[2px] lg:hidden" onClick={() => setSidebarOpen(false)} /> : null}
 
       <div className="student-dashboard-shell grid h-full min-h-0 min-w-0 grid-cols-1 lg:grid-cols-[232px_minmax(0,1fr)]">
         <aside className={`fixed bottom-0 left-0 top-16 z-50 h-auto w-64 shrink-0 flex-shrink-0 border-r border-white/15 bg-[#38A0DC] p-4 text-white shadow-xl transition-transform duration-300 lg:static lg:z-auto lg:block lg:h-full lg:w-[232px] lg:translate-x-0 lg:rounded-none lg:shadow-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -611,25 +616,25 @@ const StudentDashboard = () => {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-700">Mekdela Amba University</p>
-                <h1 className="mt-1 text-2xl font-extrabold text-sky-950 md:text-3xl">Welcome, {getStudentFullName()}</h1>
+                <h1 className="mt-1 text-2xl font-extrabold text-sky-950 md:text-3xl">{tUi('Welcome')}, {getStudentFullName()}</h1>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2 pt-1 text-xs font-medium md:text-sm">
               <span className="rounded-full border border-sky-300/60 bg-sky-200/80 px-3 py-1 text-sky-950">
-                <strong>ID:</strong> {profile?.student_id || profile?.username || 'N/A'}
+                <strong>{tUi('ID')}:</strong> {profile?.student_id || profile?.username || tUi('N/A')}
               </span>
               <span className="rounded-full border border-sky-300/60 bg-sky-200/80 px-3 py-1 text-sky-950">
-                <strong>Department:</strong> {profile?.department_name || profile?.department || 'N/A'}
+                <strong>{tUi('Department')}:</strong> {profile?.department_name || profile?.department || tUi('N/A')}
               </span>
               <span className="rounded-full border border-sky-300/60 bg-sky-200/80 px-3 py-1 text-sky-950">
-                <strong>Program:</strong> {profile?.program_type || profile?.program || 'N/A'}
+                <strong>{tUi('Program')}:</strong> {profile?.program_type || profile?.program || tUi('N/A')}
               </span>
               <span className="rounded-full border border-sky-300/60 bg-sky-200/80 px-3 py-1 text-sky-950">
-                <strong>Year Level:</strong> {profile?.year_level || 'N/A'}
+                <strong>{tUi('Year Level')}:</strong> {profile?.year_level || tUi('N/A')}
               </span>
               <span className="rounded-full border border-sky-300/60 bg-sky-200/80 px-3 py-1 text-sky-950">
-                <strong>Section:</strong> {profile?.section ? `Section ${profile.section}` : 'N/A'}
+                <strong>{tUi('Section')}:</strong> {profile?.section ? `${tUi('Section')} ${profile.section}` : tUi('N/A')}
               </span>
             </div>
           </div>

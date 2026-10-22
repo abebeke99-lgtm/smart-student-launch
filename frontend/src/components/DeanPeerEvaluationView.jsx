@@ -4,6 +4,7 @@ import PeerEvaluationModal from './PeerEvaluationModal';
 import { courseAssignmentApi, evaluationApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PeerEvaluationDeadlineBadge from './PeerEvaluationDeadlineBadge';
+import { useUiText } from '../hooks/useUiText';
 
 const isLabAssistantRole = (role) => ['lab_assistant', 'ara', 'lab assistant', 'lab-assistant'].includes(String(role || '').trim().toLowerCase());
 const isCollegeDeanRole = (role) => ['college_dean', 'dean'].includes(String(role || '').trim().toLowerCase().replace(/[-\s]+/g, '_'));
@@ -11,6 +12,7 @@ const normalizeRole = (role) => String(role || '').trim().toLowerCase().replace(
 const isAcademicDirectorateRole = (role) => ['academic_directorate', 'academic_director', 'directorate'].includes(normalizeRole(role));
 
 const DeanPeerEvaluationView = () => {
+  const t = useUiText();
   const { user } = useAuth();
   const [evaluations, setEvaluations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ const DeanPeerEvaluationView = () => {
         })
         : []);
     } catch (loadError) {
-      setError(loadError?.message || 'Unable to load peer evaluations.');
+      setError(loadError?.message || t('Unable to load peer evaluations.'));
       setEvaluations([]);
     } finally {
       setLoading(false);
@@ -62,16 +64,16 @@ const DeanPeerEvaluationView = () => {
       <div className="rounded-lg bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">Peer Evaluation</h2>
-            <p className="text-sm text-gray-500">Evaluate eligible colleagues in your department on collaboration and professional performance.</p>
+            <h2 className="text-xl font-semibold text-gray-800">{t('Peer Evaluation')}</h2>
+            <p className="text-sm text-gray-500">{t('Evaluate eligible colleagues in your department on collaboration and professional performance.')}</p>
           </div>
-          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">{pendingCount} pending</span>
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">{pendingCount} {t('pending')}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Peer</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Department</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Deadline</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Action</th></tr></thead>
+            <thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Peer')}</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Department')}</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Deadline')}</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{t('Action')}</th></tr></thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {loading ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">Loading peer evaluations...</td></tr> : evaluations.filter((evaluation) => {
+              {loading ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('Loading peer evaluations...')}</td></tr> : evaluations.filter((evaluation) => {
                 const targetRole = normalizeRole(evaluation.target_role);
                 return ['college_dean', 'dean'].includes(normalizeRole(user?.role))
                   ? targetRole === 'instructor' || isAcademicDirectorateRole(targetRole)
@@ -83,8 +85,8 @@ const DeanPeerEvaluationView = () => {
                 return (
                   <tr key={evaluation.target_user_id} className="border-b border-gray-100">
                     <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                      <span className="block">{evaluation.instructor_name || evaluation.username || 'Colleague'}</span>
-                      {isLabAssistant && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Lab Assistant (ARA)</span>}
+                      <span className="block">{evaluation.instructor_name || evaluation.username || t('Colleague')}</span>
+                      {isLabAssistant && <span className="mt-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">{t('Lab Assistant (ARA)')}</span>}
                       <span className="mt-1 block text-xs capitalize text-gray-500">{String(evaluation.target_role || '').replace(/[_-]/g, ' ')}</span>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">{evaluation.target_department_name || '-'}</td>
@@ -92,19 +94,19 @@ const DeanPeerEvaluationView = () => {
                     <td className="px-4 py-4 text-sm">
                       {completed ? (
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-emerald-600">Evaluated ({Number(evaluation.total_score || 0).toFixed(1)}/100)</span>
-                          <button type="button" onClick={() => setSelected(evaluation)} className="font-semibold text-blue-600 underline transition-colors hover:text-blue-800"><Eye className="mr-1 inline h-4 w-4" />View Details</button>
+                          <span className="font-semibold text-emerald-600">{t('Evaluated ({score}/100)').replace('{score}', Number(evaluation.total_score || 0).toFixed(1))}</span>
+                          <button type="button" onClick={() => setSelected(evaluation)} className="font-semibold text-blue-600 underline transition-colors hover:text-blue-800"><Eye className="mr-1 inline h-4 w-4" />{t('View Details')}</button>
                         </div>
                       ) : hasAssignment ? (
-                        <button type="button" onClick={() => setSelected(evaluation)} className="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-100 hover:text-indigo-700"><ClipboardCheck className="mr-1 h-4 w-4" />Evaluate</button>
+                        <button type="button" onClick={() => setSelected(evaluation)} className="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-bold text-indigo-600 transition-colors hover:bg-indigo-100 hover:text-indigo-700"><ClipboardCheck className="mr-1 h-4 w-4" />{t('Evaluate')}</button>
                       ) : (
-                        <span className="text-xs text-gray-500">Not published yet</span>
+                        <span className="text-xs text-gray-500">{t('Not published yet')}</span>
                       )}
                     </td>
                   </tr>
                 );
               })}
-              {!loading && !error && !evaluations.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">No eligible colleagues found in your department.</td></tr>}
+              {!loading && !error && !evaluations.length && <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">{t('No eligible colleagues found in your department.')}</td></tr>}
             </tbody>
           </table>
         </div>

@@ -3,8 +3,10 @@ import { Briefcase, Users, Award, BarChart3 } from 'lucide-react';
 import { LanguageContext } from '../context/LanguageContext';
 import { publicApi } from '../services/api';
 import FocusAreaModal from './FocusAreaModal';
+import { useUiText } from '../hooks/useUiText';
 
 const UniversityFocusArea = () => {
+  const t = useUiText();
   const { language } = useContext(LanguageContext);
   const [selectedArea, setSelectedArea] = useState(null);
   const [focusAreas, setFocusAreas] = useState([]);
@@ -31,7 +33,7 @@ const UniversityFocusArea = () => {
       } catch (err) {
         console.error('Unable to load IEPS focus areas:', err);
         if (isMounted) {
-          setError('Unable to load focus areas');
+          setError(t('Unable to load focus areas'));
           setFocusAreas([]);
         }
       } finally {
@@ -70,11 +72,11 @@ const UniversityFocusArea = () => {
           {/* Header */}
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-blue-900 mb-4">
-              {language === 'en' ? 'IEPS Platform Modules' : 'IEPS ፕላትፎርም ሞጁሎች'}
+              {language === 'en' ? t('IEPS Platform Modules') : 'IEPS ፕላትፎርም ሞጁሎች'}
             </h2>
             <p className="text-gray-700 text-lg max-w-3xl mx-auto">
               {language === 'en'
-                ? 'Explore the core evaluation and assessment modules that power the Instructor Performance Evaluation System, designed to support comprehensive academic excellence and continuous improvement.'
+                ? t('Explore the core evaluation and assessment modules that power the Instructor Performance Evaluation System, designed to support comprehensive academic excellence and continuous improvement.')
                 : 'አስተምህር አፈጻጸም ግምገማ ስርዓትን ሰጪውን ዋና ግምገማ እና ግምገማ ሞጁሎችን ይዳሰሱ፣ ሰፊ የአካዳሚክ ሉ優excellence እና ቀጣይነት ያለው ማሳደግን ለመደገፍ ታስቦ የተዋቀረ።'}
             </p>
           </div>
@@ -85,7 +87,7 @@ const UniversityFocusArea = () => {
               <div className="text-center">
                 <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-300 border-t-blue-600 mb-4" />
                 <p className="text-gray-600">
-                  {language === 'en' ? 'Loading focus areas...' : 'ትኩረት ያላቸው ቦታዎች ይጫናሉ...'}
+                  {language === 'en' ? t('Loading focus areas...') : 'ትኩረት ያላቸው ቦታዎች ይጫናሉ...'}
                 </p>
               </div>
             </div>
@@ -95,7 +97,7 @@ const UniversityFocusArea = () => {
           {error && !loading && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center mb-8">
               <p className="text-red-700">
-                {language === 'en' ? 'Unable to load focus areas. Please try again later.' : 'ትኩረት ያላቸው ቦታዎችን ማወቅ አልተቻለም። እንደገና ይሞክሩ።'}
+                {language === 'en' ? t('Unable to load focus areas. Please try again later.') : 'ትኩረት ያላቸው ቦታዎችን ማወቅ አልተቻለም። እንደገና ይሞክሩ።'}
               </p>
             </div>
           )}
@@ -128,7 +130,7 @@ const UniversityFocusArea = () => {
                       }}
                       className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
                     >
-                      {language === 'en' ? 'Learn More' : 'ተጨማሪ ይወቁ'}
+                      {language === 'en' ? t('Learn More') : 'ተጨማሪ ይወቁ'}
                     </button>
                   </div>
                 </div>
@@ -140,7 +142,7 @@ const UniversityFocusArea = () => {
           {!loading && !error && focusAreas.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-600">
-                {language === 'en' ? 'No focus areas available.' : 'ገቢ ትኩረት ያላቸው ቦታዎች የሉም።'}
+                {language === 'en' ? t('No focus areas available.') : 'ገቢ ትኩረት ያላቸው ቦታዎች የሉም።'}
               </p>
             </div>
           )}

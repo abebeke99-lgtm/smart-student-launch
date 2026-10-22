@@ -28,7 +28,7 @@ const DashboardLayout = ({
 
   return (
     <DashboardSidebarContext.Provider value={sidebarContext}>
-      <div className={`dashboard-shell h-screen w-screen overflow-hidden${hasDashboardOwnedSidebar ? ' dashboard-shell--owned-sidebar' : ''}${role === 'systemadmin' ? ' dashboard-shell--mobile-scroll' : ''}`}>
+      <div className={`dashboard-shell h-screen w-full overflow-hidden${hasDashboardOwnedSidebar ? ' dashboard-shell--owned-sidebar' : ''}${role === 'systemadmin' ? ' dashboard-shell--mobile-scroll' : ''}`}>
         <Header onMenuToggle={() => setSidebarOpen((open) => !open)} sidebarOpen={sidebarOpen} />
 
         <div className="dashboard-body flex min-w-0 flex-1 items-stretch overflow-hidden">

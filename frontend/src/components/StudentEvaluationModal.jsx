@@ -3,6 +3,7 @@ import { FaTimes } from 'react-icons/fa';
 import LanguageToggle from './LanguageToggle';
 import { criteriaApi } from '../services/api';
 import { validateEvaluationFeedback } from '../utils/validateEvaluationFeedback';
+import { useUiText } from '../hooks/useUiText';
 
 const studentAraCriteria = [
   ['Explains detailed objectives of each sessions', 'የእያንዳንዱን ክፍለ ጊዜ ዝርዝር ዓላማዎች ያብራራል'],
@@ -47,6 +48,7 @@ export default function StudentEvaluationModal({
   mode = 'create',
   evaluationRecord = null,
 }) {
+  const t = useUiText();
   const [responses, setResponses] = useState({});
   const [feedback, setFeedback] = useState('');
   const [strengths, setStrengths] = useState('');
@@ -251,7 +253,7 @@ export default function StudentEvaluationModal({
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-5xl overflow-hidden rounded-[32px] bg-white shadow-2xl">
         <div className="flex items-center justify-end border-b border-gray-200 px-6 py-4">
-          <div className="flex items-center gap-3"><LanguageToggle language={language} onChange={setLanguage} /><button type="button" onClick={onClose} aria-label={language === 'am' ? 'ዝጋ' : 'Close'} className="text-gray-500 hover:text-gray-800"><FaTimes /></button></div>
+          <div className="flex items-center gap-3"><LanguageToggle language={language} onChange={setLanguage} /><button type="button" onClick={onClose} aria-label={language === 'am' ? 'ዝጋ' : t('Close')} className="text-gray-500 hover:text-gray-800"><FaTimes /></button></div>
         </div>
 
         <div className="space-y-4 p-6 max-h-[calc(100vh-140px)] overflow-y-auto pr-2">
@@ -290,7 +292,7 @@ export default function StudentEvaluationModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-semibold text-gray-900">{getLocalizedText(currentCategory.title, language)}</h3>
                   <span className="text-sm text-gray-500">
-                    Category {currentCategoryIndex + 1} of {evaluationSections.length}
+                    {t('Category')} {currentCategoryIndex + 1} {t('of')} {evaluationSections.length}
                   </span>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -354,35 +356,35 @@ export default function StudentEvaluationModal({
                 maxLength={500}
                 disabled={isReadOnly}
                 className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:cursor-default disabled:bg-gray-50"
-                placeholder={language === 'am' ? 'ተጨማሪ አስተያየት እዚህ ያስገቡ።' : 'Add any additional feedback here.'}
+                placeholder={language === 'am' ? 'ተጨማሪ አስተያየት እዚህ ያስገቡ።' : t('Add any additional feedback here.')}
               />
             </label>}
 
             {isLastCategory && <div className="grid gap-4 md:grid-cols-2">
-              <label className="block text-sm text-gray-700"><span className="mb-2 block font-medium">{isAra ? language === 'am' ? 'የአካዳሚክ እና ምርምር ረዳቱ ጥንካሬዎች' : 'Strengths of the Academic and Research Assistant.' : language === 'am' ? 'ጠንካራ ጎኖች' : 'Strengths'}</span><textarea rows={3} value={strengths} onChange={(event) => setStrengths(event.target.value)} maxLength={500} disabled={isReadOnly} className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:bg-gray-50" placeholder={language === 'am' ? 'ጠንካራ ጎኖችን ይግለጹ።' : 'Describe strengths and positive contributions.'} /></label>
-              <label className="block text-sm text-gray-700"><span className="mb-2 block font-medium">{isAra ? language === 'am' ? 'የአካዳሚክ እና ምርምር ረዳቱ ሊያሻሽላቸው የሚገቡ ነጥቦች' : 'Suggested points/aspects the Academic and Research Assistant should improve.' : language === 'am' ? 'የማሻሻያ መስኮች' : 'Areas for improvement'}</span><textarea rows={3} value={improvements} onChange={(event) => setImprovements(event.target.value)} maxLength={500} disabled={isReadOnly} className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:bg-gray-50" placeholder={language === 'am' ? 'የማሻሻያ መስኮችን ይግለጹ።' : 'Describe areas needing improvement.'} /></label>
+              <label className="block text-sm text-gray-700"><span className="mb-2 block font-medium">{isAra ? language === 'am' ? 'የአካዳሚክ እና ምርምር ረዳቱ ጥንካሬዎች' : t('Strengths of the Academic and Research Assistant.') : language === 'am' ? 'ጠንካራ ጎኖች' : t('Strengths')}</span><textarea rows={3} value={strengths} onChange={(event) => setStrengths(event.target.value)} maxLength={500} disabled={isReadOnly} className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:bg-gray-50" placeholder={language === 'am' ? 'ጠንካራ ጎኖችን ይግለጹ።' : t('Describe strengths and positive contributions.')} /></label>
+              <label className="block text-sm text-gray-700"><span className="mb-2 block font-medium">{isAra ? language === 'am' ? 'የአካዳሚክ እና ምርምር ረዳቱ ሊያሻሽላቸው የሚገቡ ነጥቦች' : t('Suggested points/aspects the Academic and Research Assistant should improve.') : language === 'am' ? 'የማሻሻያ መስኮች' : t('Areas for improvement')}</span><textarea rows={3} value={improvements} onChange={(event) => setImprovements(event.target.value)} maxLength={500} disabled={isReadOnly} className="w-full rounded-3xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 disabled:bg-gray-50" placeholder={language === 'am' ? 'የማሻሻያ መስኮችን ይግለጹ።' : t('Describe areas needing improvement.')} /></label>
             </div>}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
               <button type="button" onClick={onClose} className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                {mode === 'view' && !isEditMode ? 'Close' : 'Cancel'}
+                {mode === 'view' && !isEditMode ? t('Close') : t('Cancel')}
               </button>
 
               {currentCategoryIndex > 0 && <button type="button" onClick={() => { setSubmitError(''); setHighlightedCriterionId(null); setCurrentCategoryIndex((index) => index - 1); }} className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-                Previous
+                {t('Previous')}
               </button>}
 
               {!isLastCategory ? (
                 <button type="button" onClick={handleNextCategory} className="rounded-full bg-ieps-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-ieps-blue-700">
-                  Next
+                  {t('Next')}
                 </button>
               ) : mode === 'view' && !isEditMode ? (
                 <button type="button" onClick={handleEditClick} className="rounded-full bg-gray-700 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-800">
-                  Edit Evaluation
+                  {t('Edit Evaluation')}
                 </button>
               ) : (
                 <button type="submit" disabled={isSubmitting || isReadOnly} className="rounded-full bg-ieps-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-ieps-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-                  {isSubmitting ? 'Submitting...' : mode === 'view' ? 'Update Evaluation' : 'Submit Evaluation'}
+                  {isSubmitting ? t('Submitting...') : mode === 'view' ? t('Update Evaluation') : t('Submit Evaluation')}
                 </button>
               )}
             </div>
