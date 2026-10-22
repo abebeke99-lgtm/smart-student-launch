@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 node_modules/
 **/node_modules/
 .env
@@ -8,3 +9,10 @@ server/uploads/*
 client/dist/
 coverage/
 npm-debug.log*
+=======
+backend/.env
+backend/uploads/
+node_modules/
+backend/uploads/
+backend/.env
+>>>>>>> 4053d0cca7f26b1056ae6091e532fdf617fbbabb

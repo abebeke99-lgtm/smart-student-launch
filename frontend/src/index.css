@@ -1,0 +1,111 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --text-xs: 0.875rem;
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 1rem;
+  --text-sm--line-height: 1.5rem;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-800 font-sans antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ieps-blue-400 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ieps-blue-600;
+  }
+}
+
+@layer utilities {
+  .text-\[9px\],
+  .text-\[10px\],
+  .text-\[11px\],
+  .text-\[12px\],
+  .text-\[13px\] {
+    font-size: 0.875rem;
+  }
+}
+
+@media print {
+  body.print-result-letter * {
+    visibility: hidden !important;
+  }
+
+  body.print-result-letter .result-letter,
+  body.print-result-letter .result-letter * {
+    visibility: visible !important;
+  }
+
+  body.print-result-letter .result-letter {
+    position: absolute !important;
+    inset: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body.print-result-letter .result-letter__page {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-ieps-blue-600 text-white px-8 py-3 rounded-full font-semibold 
+           hover:bg-ieps-blue-500 transition-all duration-300 
+           shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+  }
+  
+  .btn-primary-disabled {
+    @apply bg-gray-400 text-white px-8 py-3 rounded-full font-semibold 
+           cursor-not-allowed opacity-70;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-ieps-blue-600 text-ieps-blue-600 px-6 py-2 
+           rounded-full font-semibold hover:bg-ieps-blue-600 
+           hover:text-white transition-all duration-300;
+  }
+  
+  .btn-danger {
+    @apply bg-red-600 text-white px-6 py-2 rounded-full font-semibold 
+           hover:bg-red-500 transition-all duration-300;
+  }
+  
+  .btn-success {
+    @apply bg-green-600 text-white px-6 py-2 rounded-full font-semibold 
+           hover:bg-green-500 transition-all duration-300;
+  }
+  
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl 
+           transition-shadow duration-300;
+  }
+  
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}

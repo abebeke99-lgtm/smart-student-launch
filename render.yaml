@@ -1,5 +1,6 @@
 services:
   - type: web
+<<<<<<< HEAD
     name: smart-cafeteria-api
     runtime: node
     rootDir: server
@@ -16,3 +17,42 @@ services:
         value: 1d
       - key: CLIENT_URL
         sync: false
+=======
+    name: ipes-aiven-app
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
+    startCommand: npm start --prefix backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --dns-result-order=ipv4first
+      - key: DB_HOST
+        value: mysql-8899181-negeseabewa18-286f.h.aivencloud.com
+      - key: DB_PORT
+        value: "26709"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_CA
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+>>>>>>> 4053d0cca7f26b1056ae6091e532fdf617fbbabb
